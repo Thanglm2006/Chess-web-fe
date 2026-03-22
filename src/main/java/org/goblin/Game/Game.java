@@ -35,6 +35,16 @@ public class Game {
 	public static boolean gameOver = false;
 
 	public Game() {
+		board = new Board(); // Reset board
+		AllPieces.clear();
+		wPieces.clear();
+		bPieces.clear();
+		allPlayersMove.clear();
+		allEnemysMove.clear();
+		player = true;
+		gameOver = false;
+		drag = false;
+		
 		new PieceImages();
 		loadFenPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 		start();
@@ -228,14 +238,36 @@ public class Game {
 	}
 
 	public void drawBoard(Graphics g) {
+		g.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
 		for (int i = 0; i < 8; i++) {
 			for (int j = 0; j < 8; j++) {
-				if ((i + j) % 2 == 1) {
-					g.setColor(new Color(118, 150, 86));
+				boolean isDark = ((i + j) % 2 == 1);
+				Color darkCol = new Color(118, 150, 86);
+				Color lightCol = new Color(238, 238, 210);
+				
+				if (isDark) {
+					g.setColor(darkCol);
 				} else {
-					g.setColor(new Color(238, 238, 210));
+					g.setColor(lightCol);
 				}
 				g.fillRect(i * Piece.size, j * Piece.size, Piece.size, Piece.size);
+				
+				// Draw coordinates
+				// Text color should be opposite of the square color
+				g.setColor(isDark ? lightCol : darkCol);
+				
+				// Ranks (1-8) top-left
+				if (i == 0) {
+					String rank = String.valueOf(8 - j);
+					g.drawString(rank, i * Piece.size + 4, j * Piece.size + 16);
+				}
+				
+				// Files (a-h) bottom-right
+				if (j == 7) {
+					String file = String.valueOf((char) ('a' + i));
+					int strWidth = g.getFontMetrics().stringWidth(file);
+					g.drawString(file, (i + 1) * Piece.size - strWidth - 4, (j + 1) * Piece.size - 4);
+				}
 			}
 		}
 	}

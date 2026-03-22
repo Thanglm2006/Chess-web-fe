@@ -6,28 +6,57 @@ import java.awt.Dimension;
 public class Frame extends JFrame {
 	
 	private static final long serialVersionUID = -4442947819954124379L;
-	public static final int WIDTH = 640;
-	public static final int HEIGTH = 920;
 	
 	public Frame() {
-		this.setTitle("Chess");
+		this.setTitle("Chess.com Desktop Clone");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setResizable(false);
+		this.getContentPane().setBackground(new java.awt.Color(49, 46, 43));
 		
-		this.setContentPane(new StartScreen(this));
-		this.getContentPane().setPreferredSize(new Dimension(WIDTH, HEIGTH));
-		this.pack();
+		initStartScreen(); // Show start overlay right sidebar initially
+		
 		this.setLocationRelativeTo(null);
 		this.setVisible(true);
 	}
 	
-	public void startGame(int timeInSeconds) {
-		GameContainerPanel gamePanel = new GameContainerPanel(timeInSeconds);
-		this.setContentPane(gamePanel);
-		this.getContentPane().setPreferredSize(new Dimension(WIDTH, HEIGTH));
+	public void initStartScreen() {
+		this.getContentPane().removeAll();
+		this.setLayout(new java.awt.BorderLayout());
+		
+		// Left Sidebar
+		this.add(new LeftSidebarPanel(), java.awt.BorderLayout.WEST);
+		
+		// Center Game Area (Inactive board waiting for game start)
+		GameContainerPanel centerPanel = new GameContainerPanel(0);
+		// Optionally lock it here or let them drag around freely
+		this.add(centerPanel, java.awt.BorderLayout.CENTER);
+		
+		// Right Sidebar (Start Menu)
+		this.add(new RightSidebarStartPanel(this), java.awt.BorderLayout.EAST);
+		
 		this.pack();
 		this.revalidate();
 		this.repaint();
-		gamePanel.requestFocusInWindow();
+	}
+	
+	public void startGame(int timeInSeconds) {
+		this.getContentPane().removeAll();
+		this.setLayout(new java.awt.BorderLayout());
+		
+		// Reload Left Sidebar
+		this.add(new LeftSidebarPanel(), java.awt.BorderLayout.WEST);
+		
+		// Load actual Game board and timer
+		GameContainerPanel centerPanel = new GameContainerPanel(timeInSeconds);
+		this.add(centerPanel, java.awt.BorderLayout.CENTER);
+		
+		// Swap right sidebar to the Game controls
+		this.add(new RightSidebarPanel(this, centerPanel), java.awt.BorderLayout.EAST);
+		
+		this.pack();
+		this.revalidate();
+		this.repaint();
+		// Set focus back so KeyListener works for undo
+		centerPanel.requestFocusInWindow();
 	}
 }

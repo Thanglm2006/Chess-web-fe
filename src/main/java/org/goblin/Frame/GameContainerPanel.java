@@ -16,7 +16,7 @@ public class GameContainerPanel extends JPanel {
     private boolean hasTimeLimit;
     
     public GameContainerPanel(int timeInSeconds) {
-        this.setLayout(new BorderLayout());
+        this.setLayout(new GridBagLayout());
         this.setBackground(new Color(49, 46, 43));
         
         // Initialize Game and Board Panel
@@ -27,22 +27,25 @@ public class GameContainerPanel extends JPanel {
         blackTime = timeInSeconds;
         
         // Initialize UI Components
-        topPlayer = new PlayerPanel("Đối thủ", 1456, false, timeInSeconds);
+        topPlayer = new PlayerPanel("Đối thủ", 1488, false, timeInSeconds);
         bottomPlayer = new PlayerPanel("Bạn", 1470, true, timeInSeconds);
-        toolbar = new ToolbarPanel(boardPanel);
         
-        // Top wrapper
-        JPanel topWrapper = new JPanel(new BorderLayout());
-        topWrapper.add(topPlayer, BorderLayout.CENTER);
-        
-        // Bottom wrapper
-        JPanel bottomWrapper = new JPanel(new BorderLayout());
-        bottomWrapper.add(bottomPlayer, BorderLayout.NORTH);
-        bottomWrapper.add(toolbar, BorderLayout.SOUTH);
-        
-        this.add(topWrapper, BorderLayout.NORTH);
-        this.add(boardPanel, BorderLayout.CENTER);
-        this.add(bottomWrapper, BorderLayout.SOUTH);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(0, 0, 0, 0);
+
+        gbc.gridy = 0;
+        this.add(topPlayer, gbc);
+
+        gbc.gridy = 1;
+        this.add(boardPanel, gbc);
+
+        gbc.gridy = 2;
+        this.add(bottomPlayer, gbc);
         
         if (hasTimeLimit) {
             timer = new Timer(1000, e -> {
@@ -67,6 +70,34 @@ public class GameContainerPanel extends JPanel {
         }
         
         // Initial ui update
+        updatePlayerPanels();
+    }
+    
+    public void performUndo() {
+        org.goblin.Game.Game.board.undoMove();
+        boardPanel.repaint();
+        updatePlayerPanels();
+    }
+    
+    public void performRedo() {
+        org.goblin.Game.Game.board.redoMove();
+        boardPanel.repaint();
+        updatePlayerPanels();
+    }
+    
+    public void performFirst() {
+        while(!org.goblin.Game.Game.board.lastMoves.isEmpty()) {
+            org.goblin.Game.Game.board.undoMove();
+        }
+        boardPanel.repaint();
+        updatePlayerPanels();
+    }
+    
+    public void performLast() {
+        while(!org.goblin.Game.Game.board.undoneMoves.isEmpty()) {
+            org.goblin.Game.Game.board.redoMove();
+        }
+        boardPanel.repaint();
         updatePlayerPanels();
     }
     

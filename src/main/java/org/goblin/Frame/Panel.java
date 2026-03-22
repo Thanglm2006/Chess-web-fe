@@ -24,7 +24,11 @@ public class Panel extends JPanel {
 	
 	public Panel(){
 		this.setFocusable(true);
-		this.setPreferredSize(new Dimension(80 * 8, 80 * 8));
+		Dimension exactSize = new Dimension(80 * 8, 80 * 8);
+		this.setPreferredSize(exactSize);
+		this.setMinimumSize(exactSize);
+		this.setMaximumSize(exactSize);
+		this.setBackground(new java.awt.Color(49, 46, 43)); // match GameContainer background
 		this.addMouseListener(new Listener());
 		this.addMouseMotionListener(new Listener());
 		this.addKeyListener(new KeyAdapter() {
@@ -56,10 +60,11 @@ public class Panel extends JPanel {
 		@Override
 		public void mouseClicked(MouseEvent e) {
 			if(Game.gameOver) return;
+			if(!Game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
+			
 			if(SwingUtilities.isLeftMouseButton(e)) {
 				int x = e.getX()/ Piece.size;
 				int y = e.getY()/Piece.size;
-				// Out of bounds safety
 				if (x >= 8 || y >= 8 || x < 0 || y < 0) return;
 				
 				Game.drag = false;
@@ -72,7 +77,7 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseMoved(MouseEvent e) {
-			if(Game.gameOver) {
+			if(Game.gameOver || !Game.board.undoneMoves.isEmpty()) {
 				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				return;
 			}
@@ -93,6 +98,8 @@ public class Panel extends JPanel {
 		@Override
 		public void mouseDragged(MouseEvent e) {
 			if(Game.gameOver) return;
+			if(!Game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
+			
 			if(!Game.drag && game.active != null) {
 				game.active = null;
 			}
@@ -112,7 +119,7 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseReleased(MouseEvent e) {
-			if(Game.gameOver) {
+			if(Game.gameOver || !Game.board.undoneMoves.isEmpty()) {
 				Game.drag = false;
 				repaint();
 				return;
@@ -128,7 +135,6 @@ public class Panel extends JPanel {
 			revalidate();
 			repaint();
 			
-			// Update game container info after move
 			java.awt.Container parent = getParent();
 			while (parent != null && !(parent instanceof GameContainerPanel)) {
 				parent = parent.getParent();

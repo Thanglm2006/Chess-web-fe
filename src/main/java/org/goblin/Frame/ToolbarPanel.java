@@ -8,10 +8,10 @@ public class ToolbarPanel extends JPanel {
     private Color bgGray = new Color(38, 36, 33);
     
     public ToolbarPanel(Panel boardPanel) {
-        setPreferredSize(new Dimension(640, 80));
+        setPreferredSize(new Dimension(640, 100)); // Increased height
         setBackground(bgGray);
-        setLayout(new GridLayout(1, 4, 10, 0));
-        this.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        setLayout(new GridLayout(1, 4, 15, 0));
+        this.setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
         
         JButton optBtn = createBtn("≡", "Tùy chọn");
         JButton chatBtn = createBtn("💬", "Chat");
@@ -37,7 +37,7 @@ public class ToolbarPanel extends JPanel {
     }
     
     private JButton createBtn(String iconTxt, String labelTxt) {
-        JButton btn = new JButton("<html><center><font size='6'>" + iconTxt + "</font><br><font size='3'>" + labelTxt + "</font></center></html>");
+        JButton btn = new JButton("<html><center><font size='7'>" + iconTxt + "</font><br><font size='5'>" + labelTxt + "</font></center></html>");
         btn.setFocusPainted(false);
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
