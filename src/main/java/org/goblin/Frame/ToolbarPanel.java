@@ -1,0 +1,57 @@
+package org.goblin.Frame;
+
+import org.goblin.Game.Game;
+import javax.swing.*;
+import java.awt.*;
+
+public class ToolbarPanel extends JPanel {
+    private Color bgGray = new Color(38, 36, 33);
+    
+    public ToolbarPanel(Panel boardPanel) {
+        setPreferredSize(new Dimension(640, 80));
+        setBackground(bgGray);
+        setLayout(new GridLayout(1, 4, 10, 0));
+        this.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        JButton optBtn = createBtn("≡", "Tùy chọn");
+        JButton chatBtn = createBtn("💬", "Chat");
+        JButton backBtn = createBtn("◄", "Quay lại");
+        JButton nextBtn = createBtn("►", "Tiếp");
+
+        backBtn.addActionListener(e -> {
+            Game.board.undoMove();
+            boardPanel.repaint();
+            Container parent = getParent();
+            while (parent != null && !(parent instanceof GameContainerPanel)) {
+                parent = parent.getParent();
+            }
+            if (parent instanceof GameContainerPanel) {
+                ((GameContainerPanel) parent).updatePlayerPanels();
+            }
+        });
+        
+        add(optBtn);
+        add(chatBtn);
+        add(backBtn);
+        add(nextBtn);
+    }
+    
+    private JButton createBtn(String iconTxt, String labelTxt) {
+        JButton btn = new JButton("<html><center><font size='6'>" + iconTxt + "</font><br><font size='3'>" + labelTxt + "</font></center></html>");
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setForeground(Color.LIGHT_GRAY);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                btn.setForeground(Color.WHITE);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                btn.setForeground(Color.LIGHT_GRAY);
+            }
+        });
+        return btn;
+    }
+}

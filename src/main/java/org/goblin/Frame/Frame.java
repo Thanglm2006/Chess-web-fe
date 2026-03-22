@@ -6,10 +6,8 @@ import java.awt.Dimension;
 public class Frame extends JFrame {
 	
 	private static final long serialVersionUID = -4442947819954124379L;
-	public static final int BOARD_WIDTH = 640;
-	public static final int SIDEBAR_WIDTH = 260;
-	public static final int WIDTH = BOARD_WIDTH + SIDEBAR_WIDTH;
-	public static final int HEIGTH = 640;
+	public static final int WIDTH = 640;
+	public static final int HEIGTH = 920;
 	
 	public Frame() {
 		this.setTitle("Chess");
@@ -24,7 +22,7 @@ public class Frame extends JFrame {
 	}
 	
 	public void startGame(int timeInSeconds) {
-		Panel gamePanel = new Panel(timeInSeconds);
+		GameContainerPanel gamePanel = new GameContainerPanel(timeInSeconds);
 		this.setContentPane(gamePanel);
 		this.getContentPane().setPreferredSize(new Dimension(WIDTH, HEIGTH));
 		this.pack();
