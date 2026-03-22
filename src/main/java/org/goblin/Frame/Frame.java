@@ -6,20 +6,30 @@ import java.awt.Dimension;
 public class Frame extends JFrame {
 	
 	private static final long serialVersionUID = -4442947819954124379L;
-	public static final int WIDTH = 640;
+	public static final int BOARD_WIDTH = 640;
+	public static final int SIDEBAR_WIDTH = 260;
+	public static final int WIDTH = BOARD_WIDTH + SIDEBAR_WIDTH;
 	public static final int HEIGTH = 640;
 	
 	public Frame() {
-		this.setContentPane(new  Panel());
 		this.setTitle("Chess");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setResizable(false);
-		this.setVisible(true);
-		this.getContentPane().setPreferredSize(new Dimension(WIDTH,WIDTH));
+		
+		this.setContentPane(new StartScreen(this));
+		this.getContentPane().setPreferredSize(new Dimension(WIDTH, HEIGTH));
 		this.pack();
 		this.setLocationRelativeTo(null);
+		this.setVisible(true);
 	}
 	
-	
-	
+	public void startGame(int timeInSeconds) {
+		Panel gamePanel = new Panel(timeInSeconds);
+		this.setContentPane(gamePanel);
+		this.getContentPane().setPreferredSize(new Dimension(WIDTH, HEIGTH));
+		this.pack();
+		this.revalidate();
+		this.repaint();
+		gamePanel.requestFocusInWindow();
+	}
 }

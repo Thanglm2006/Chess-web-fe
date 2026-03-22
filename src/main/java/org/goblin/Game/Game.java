@@ -23,7 +23,7 @@ public class Game {
 	static ArrayList<Piece> wPieces = new ArrayList<Piece>();
 	static ArrayList<Piece> bPieces = new ArrayList<Piece>();
 
-	static boolean player = true;
+	public static boolean player = true;
 	public Piece active = null;
 	public static boolean drag = false;
 	public static ArrayList<Piece> AllPieces = new ArrayList<Piece>();
@@ -32,7 +32,7 @@ public class Game {
 
 	static List<Move> allPlayersMove = new ArrayList<Move>();
 	public static List<Move> allEnemysMove = new ArrayList<Move>();
-	private static boolean gameOver = false;
+	public static boolean gameOver = false;
 
 	public Game() {
 		new PieceImages();
