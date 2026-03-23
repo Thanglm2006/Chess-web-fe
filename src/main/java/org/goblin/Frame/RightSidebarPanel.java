@@ -2,6 +2,7 @@ package org.goblin.Frame;
 
 import javax.swing.*;
 import java.awt.*;
+import org.goblin.Game.Game;
 
 public class RightSidebarPanel extends JPanel {
     private Color bgDark = new Color(38, 36, 33);
@@ -10,6 +11,7 @@ public class RightSidebarPanel extends JPanel {
     private Color textGray = new Color(153, 153, 153);
     private Frame parentFrame;
     private GameContainerPanel gameContainer;
+    private JTextArea moveListArea;
     
     public RightSidebarPanel(Frame frame, GameContainerPanel gameContainer) {
         this.parentFrame = frame;
@@ -40,9 +42,21 @@ public class RightSidebarPanel extends JPanel {
         this.add(topWrapper, BorderLayout.NORTH);
         
         // 3. Move List Area (Center)
-        JPanel moveList = new JPanel();
-        moveList.setBackground(bgLight);
-        this.add(moveList, BorderLayout.CENTER);
+        moveListArea = new JTextArea();
+        moveListArea.setEditable(false);
+        moveListArea.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        moveListArea.setBackground(bgLight);
+        moveListArea.setForeground(Color.WHITE);
+        moveListArea.setMargin(new Insets(10, 15, 10, 15));
+        
+        JScrollPane scrollPane = new JScrollPane(moveListArea);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(bgLight);
+        
+        // Remove scrollbars for cleaner look or style them
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        
+        this.add(scrollPane, BorderLayout.CENTER);
         
         // 4. Controls & Chat Area (Bottom)
         JPanel bottomArea = new JPanel();
@@ -118,6 +132,25 @@ public class RightSidebarPanel extends JPanel {
         bottomArea.add(chatRow);
         
         this.add(bottomArea, BorderLayout.SOUTH);
+        updateMoveList();
+    }
+    
+    public void updateMoveList() {
+        if (moveListArea == null || Game.board == null) return;
+        StringBuilder sb = new StringBuilder();
+        int halfMoveCount = 1;
+        
+        for (org.goblin.Board.Move m : Game.board.lastMoves) {
+            if (halfMoveCount % 2 != 0) {
+                sb.append((halfMoveCount / 2 + 1)).append(". ").append(m.getNotation()).append("   ");
+            } else {
+                sb.append(m.getNotation()).append("\n");
+            }
+            halfMoveCount++;
+        }
+        
+        moveListArea.setText(sb.toString());
+        moveListArea.setCaretPosition(moveListArea.getDocument().getLength());
     }
     
     private JLabel createTab(String text, boolean active) {

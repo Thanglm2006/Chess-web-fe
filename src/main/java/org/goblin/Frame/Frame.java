@@ -51,7 +51,9 @@ public class Frame extends JFrame {
 		this.add(centerPanel, java.awt.BorderLayout.CENTER);
 		
 		// Swap right sidebar to the Game controls
-		this.add(new RightSidebarPanel(this, centerPanel), java.awt.BorderLayout.EAST);
+		RightSidebarPanel rightSidebar = new RightSidebarPanel(this, centerPanel);
+		centerPanel.setRightSidebar(rightSidebar);
+		this.add(rightSidebar, java.awt.BorderLayout.EAST);
 		
 		this.pack();
 		this.revalidate();

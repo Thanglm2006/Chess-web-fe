@@ -71,6 +71,24 @@ public class Move implements Comparable<Move>{
 		}
 		return false;
 	}
-	
+	public String getNotation() {
+		String p = "";
+		if (piece instanceof org.goblin.Pieces.Pawn) p = "";
+		else if (piece instanceof org.goblin.Pieces.Knight) p = "N";
+		else if (piece instanceof org.goblin.Pieces.Bishop) p = "B";
+		else if (piece instanceof org.goblin.Pieces.Rook) p = "R";
+		else if (piece instanceof org.goblin.Pieces.Queen) p = "Q";
+		else if (piece instanceof org.goblin.Pieces.King) p = "K";
+
+		char fromFile = (char)('a' + fromX);
+		int fromRank = 8 - fromY;
+		char toFile = (char)('a' + toX);
+		int toRank = 8 - toY;
+		
+		if (p.isEmpty()) {
+			return "" + fromFile + fromRank + "-" + toFile + toRank;
+		}
+		return p + fromFile + fromRank + "-" + toFile + toRank;
+	}
 	
 }

@@ -14,6 +14,11 @@ public class GameContainerPanel extends JPanel {
     private int whiteTime;
     private int blackTime;
     private boolean hasTimeLimit;
+    private RightSidebarPanel rightSidebar;
+
+    public void setRightSidebar(RightSidebarPanel panel) {
+        this.rightSidebar = panel;
+    }
     
     public GameContainerPanel(int timeInSeconds) {
         this.setLayout(new GridBagLayout());
@@ -104,6 +109,9 @@ public class GameContainerPanel extends JPanel {
     public void updatePlayerPanels() {
         topPlayer.updateTime(blackTime, !Game.player && !Game.gameOver);
         bottomPlayer.updateTime(whiteTime, Game.player && !Game.gameOver);
+        if (rightSidebar != null) {
+            rightSidebar.updateMoveList();
+        }
     }
     
     private void endGame(String message) {
