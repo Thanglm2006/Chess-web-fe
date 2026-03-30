@@ -28,7 +28,8 @@ public class Panel extends JPanel {
 	
 	public Panel(MoveListener listener){
 		this.listener = listener;
-		this.renderer = new BoardRenderer();
+		game = new Game();
+		this.renderer = new BoardRenderer(game);
 		this.setFocusable(true);
 		Dimension exactSize = new Dimension(80 * 8, 80 * 8);
 		this.setPreferredSize(exactSize);
@@ -46,7 +47,6 @@ public class Panel extends JPanel {
 				}
 			}
 		});
-		game = new Game();
 	}
 	
 	public void paintComponent(Graphics g) {
@@ -61,15 +61,15 @@ public class Panel extends JPanel {
 	class Listener extends MouseAdapter{
 		@Override
 		public void mouseClicked(MouseEvent e) {
-			if(Game.gameOver) return;
-			if(!Game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
+			if(game.gameOver) return;
+			if(!game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
 			
 			if(SwingUtilities.isLeftMouseButton(e)) {
 				int x = e.getX()/ Piece.size;
 				int y = e.getY()/Piece.size;
 				if (x >= 8 || y >= 8 || x < 0 || y < 0) return;
 				
-				Game.drag = false;
+				game.drag = false;
 				game.active = null;
 				game.selectPiece(x, y);
 				revalidate();
@@ -79,7 +79,7 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseMoved(MouseEvent e) {
-			if(Game.gameOver || !Game.board.undoneMoves.isEmpty()) {
+			if(game.gameOver || !game.board.undoneMoves.isEmpty()) {
 				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				return;
 			}
@@ -87,7 +87,7 @@ public class Panel extends JPanel {
 			tj = e.getY()/Piece.size;
 			if (ti >= 8 || tj >= 8 || ti < 0 || tj < 0) return;
 			
-			if(Game.board.getPiece(ti, tj) != null)  {
+			if(game.board.getPiece(ti, tj) != null)  {
 				setCursor(new Cursor(Cursor.HAND_CURSOR));
 			}
 			else {
@@ -99,10 +99,10 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseDragged(MouseEvent e) {
-			if(Game.gameOver) return;
-			if(!Game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
+			if(game.gameOver) return;
+			if(!game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
 			
-			if(!Game.drag && game.active != null) {
+			if(!game.drag && game.active != null) {
 				game.active = null;
 			}
 			if(SwingUtilities.isLeftMouseButton(e)) {
@@ -111,7 +111,7 @@ public class Panel extends JPanel {
 				if (x >= 8 || y >= 8 || x < 0 || y < 0) return;
 				
 				game.selectPiece(x, y);
-				Game.drag = true;
+				game.drag = true;
 				xx = e.getX();
 				yy = e.getY();				
 			}
@@ -121,15 +121,15 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseReleased(MouseEvent e) {
-			if(Game.gameOver || !Game.board.undoneMoves.isEmpty()) {
-				Game.drag = false;
+			if(game.gameOver || !game.board.undoneMoves.isEmpty()) {
+				game.drag = false;
 				repaint();
 				return;
 			}
 			int x = e.getX() / Piece.size;
 			int y = e.getY() / Piece.size;
 			if (x >= 8 || y >= 8 || x < 0 || y < 0) {
-				Game.drag = false;
+				game.drag = false;
 				repaint();
 				return;
 			}

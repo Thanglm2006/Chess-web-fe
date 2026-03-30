@@ -29,8 +29,8 @@ public class Pawn extends Piece {
 			
 			if(toX == xCord + 1 && yCord -(isWhite ? 1 : -1) == toY) {
 				if(board.getXY(toX, toY) == 0) {
-					Game.AllPieces.remove(board.getPiece(xCord + 1, yCord));
-					Game.fillPieces();
+					board.getGame().AllPieces.remove(board.getPiece(xCord + 1, yCord));
+					board.getGame().fillPieces();
 					board.setXY(xCord + 1, yCord, 0);
 					board.setPieceIntoBoard(xCord + 1, yCord, null);
 				}
@@ -38,8 +38,8 @@ public class Pawn extends Piece {
 			
 			if(toX == xCord -1 && yCord -(isWhite ? 1 : -1) == toY) {
 				if(board.getXY(toX, toY) == 0) {
-					Game.AllPieces.remove(board.getPiece(xCord - 1, yCord));
-					Game.fillPieces();
+					board.getGame().AllPieces.remove(board.getPiece(xCord - 1, yCord));
+					board.getGame().fillPieces();
 					board.setXY(xCord -1, yCord, 0);
 					board.setPieceIntoBoard(xCord - 1, yCord, null);
 				}
@@ -62,7 +62,7 @@ public class Pawn extends Piece {
 	}
 	
 	private void removeEnpassant() {
-		for(Piece p: Game.AllPieces) {
+		for(Piece p: board.getGame().AllPieces) {
 			if(p instanceof Pawn && p != this) {
 				((Pawn) p ).setMoved2Squares(false);
 			}

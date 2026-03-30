@@ -25,7 +25,6 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
     public GameContainerPanel(int timeInSeconds) {
         this.setLayout(new GridBagLayout());
         this.setBackground(Theme.BG_LIGHT);
-        Game.setEventListener(this);
         
         // Initialize Game and Board Panel
         boardPanel = new Panel(new MoveListener() {
@@ -38,6 +37,7 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
                 performUndo();
             }
         });
+        boardPanel.game.setEventListener(this);
         
         hasTimeLimit = (timeInSeconds > 0);
         whiteTime = timeInSeconds;
@@ -66,11 +66,11 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
         
         if (hasTimeLimit) {
             timer = new Timer(1000, e -> {
-                if (Game.gameOver) {
+                if (getGame().gameOver) {
                     timer.stop();
                     return;
                 }
-                if (Game.player) {
+                if (getGame().player) {
                     whiteTime--;
                     if (whiteTime <= 0) {
                         endGame("Đen thắng! Trắng đã hết thời gian.");
@@ -90,44 +90,48 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
         updatePlayerPanels();
     }
     
+    public Game getGame() {
+        return boardPanel.game;
+    }
+    
     public void performUndo() {
-        org.goblin.Game.Game.board.undoMove();
+        getGame().board.undoMove();
         boardPanel.repaint();
         updatePlayerPanels();
     }
     
     public void performRedo() {
-        org.goblin.Game.Game.board.redoMove();
+        getGame().board.redoMove();
         boardPanel.repaint();
         updatePlayerPanels();
     }
     
     public void performFirst() {
-        while(!org.goblin.Game.Game.board.lastMoves.isEmpty()) {
-            org.goblin.Game.Game.board.undoMove();
+        while(!getGame().board.lastMoves.isEmpty()) {
+            getGame().board.undoMove();
         }
         boardPanel.repaint();
         updatePlayerPanels();
     }
     
     public void performLast() {
-        while(!org.goblin.Game.Game.board.undoneMoves.isEmpty()) {
-            org.goblin.Game.Game.board.redoMove();
+        while(!getGame().board.undoneMoves.isEmpty()) {
+            getGame().board.redoMove();
         }
         boardPanel.repaint();
         updatePlayerPanels();
     }
     
     public void updatePlayerPanels() {
-        topPlayer.updateTime(blackTime, !Game.player && !Game.gameOver);
-        bottomPlayer.updateTime(whiteTime, Game.player && !Game.gameOver);
+        topPlayer.updateTime(blackTime, !getGame().player && !getGame().gameOver);
+        bottomPlayer.updateTime(whiteTime, getGame().player && !getGame().gameOver);
         if (rightSidebar != null) {
             rightSidebar.updateMoveList();
         }
     }
     
     private void endGame(String message) {
-        Game.gameOver = true;
+        getGame().gameOver = true;
         if (timer != null) timer.stop();
         updatePlayerPanels();
         JOptionPane.showMessageDialog(this, message, "Hết thời gian", JOptionPane.INFORMATION_MESSAGE);

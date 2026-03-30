@@ -2,37 +2,36 @@ package org.goblin.Game;
 
 import org.goblin.Board.Board;
 import org.goblin.Board.Move;
-import org.goblin.Frame.PieceImages;
 import org.goblin.Pieces.*;
 import java.util.*;
 import org.goblin.Frame.GameEventListener;
 
 public class Game {
-	public static org.goblin.Board.Board board = new org.goblin.Board.Board();
+	public org.goblin.Board.Board board = new org.goblin.Board.Board(this);
 
-	public static King wk;
-	public static King bk;
-	public static ArrayList<Piece> wPieces = new ArrayList<Piece>();
-	public static ArrayList<Piece> bPieces = new ArrayList<Piece>();
-	public static GameEventListener listener;
+	public King wk;
+	public King bk;
+	public ArrayList<Piece> wPieces = new ArrayList<Piece>();
+	public ArrayList<Piece> bPieces = new ArrayList<Piece>();
+	public GameEventListener listener;
 
-	public static void setEventListener(GameEventListener l) {
+	public void setEventListener(GameEventListener l) {
 		listener = l;
 	}
 
-	public static boolean player = true;
+	public boolean player = true;
 	public Piece active = null;
-	public static boolean drag = false;
-	public static ArrayList<Piece> AllPieces = new ArrayList<Piece>();
+	public boolean drag = false;
+	public ArrayList<Piece> AllPieces = new ArrayList<Piece>();
 
-	ArrayList<Move> allPossiblesMoves = new ArrayList<Move>();
+	public ArrayList<Move> allPossiblesMoves = new ArrayList<Move>();
 
-	static List<Move> allPlayersMove = new ArrayList<Move>();
-	public static List<Move> allEnemysMove = new ArrayList<Move>();
-	public static boolean gameOver = false;
+	public List<Move> allPlayersMove = new ArrayList<Move>();
+	public List<Move> allEnemysMove = new ArrayList<Move>();
+	public boolean gameOver = false;
 
 	public Game() {
-		board = new Board(); // Reset board
+		board = new Board(this); // Reset board
 		AllPieces.clear();
 		wPieces.clear();
 		bPieces.clear();
@@ -42,7 +41,6 @@ public class Game {
 		gameOver = false;
 		drag = false;
 		
-		new PieceImages();
 		loadFenPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 		start();
 	}
@@ -54,7 +52,7 @@ public class Game {
 		checkPlayersLegalMoves();
 	}
 
-	public static void generatePlayersTurnMoves(Board board) {
+	public void generatePlayersTurnMoves(Board board) {
 		allPlayersMove = new ArrayList<Move>();
 		for (Piece p : AllPieces) {
 			if (p.isWhite() == player) {
@@ -64,7 +62,7 @@ public class Game {
 		}
 	}
 
-	public static void generateEnemysMoves(Board board) {
+	public void generateEnemysMoves(Board board) {
 		allEnemysMove = new ArrayList<Move>();
 		for (Piece p : AllPieces) {
 			if (p.isWhite() != player) {
@@ -74,7 +72,7 @@ public class Game {
 		}
 	}
 
-	public static void changeSide() {
+	public void changeSide() {
 		player = !player;
 		generateEnemysMoves(board);
 		generatePlayersTurnMoves(board);
@@ -103,7 +101,7 @@ public class Game {
 		}
 	}
 
-	public static void checkMate() {
+	public void checkMate() {
 		if (player) {
 			for (Piece p : wPieces) {
 				if (!p.getMoves().isEmpty()) {
@@ -133,7 +131,7 @@ public class Game {
 		gameOver = true;
 	}
 
-	public static void checkPlayersLegalMoves() {
+	public void checkPlayersLegalMoves() {
 		List<Piece> pieces = null;
 		if (player) {
 			pieces = wPieces;
@@ -145,7 +143,7 @@ public class Game {
 		}
 	}
 
-	public static void checkLegalMoves(Piece piece) {
+	public void checkLegalMoves(Piece piece) {
 		List<Move> movesToRemove = new ArrayList<Move>();
 		Board clonedBoard = board.getNewBoard();
 		Piece clonedActive = piece.getClone();
@@ -223,7 +221,7 @@ public class Game {
 		}
 	}
 
-	public static void choosePiece(Piece p, int choice) {
+	public void choosePiece(Piece p, int choice) {
 		switch (choice) {
 		case 0:
 			AllPieces.remove(p);
@@ -287,7 +285,7 @@ public class Game {
 
 	}
 
-	public static void fillPieces() {
+	public void fillPieces() {
 		wPieces = new ArrayList<Piece>();
 		bPieces = new ArrayList<Piece>();
 		for (Piece p : AllPieces) {

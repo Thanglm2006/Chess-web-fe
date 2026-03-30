@@ -19,7 +19,7 @@ public class ToolbarPanel extends JPanel {
         JButton nextBtn = createBtn("►", "Tiếp");
 
         backBtn.addActionListener(e -> {
-            Game.board.undoMove();
+            boardPanel.game.board.undoMove();
             boardPanel.repaint();
             Container parent = getParent();
             while (parent != null && !(parent instanceof GameContainerPanel)) {

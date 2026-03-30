@@ -15,8 +15,10 @@ import org.goblin.Game.Game;
 
 public class BoardRenderer {
     private PieceImages pieceImages;
+    private Game game;
 
-    public BoardRenderer() {
+    public BoardRenderer(Game game) {
+        this.game = game;
         pieceImages = new PieceImages();
     }
 
@@ -55,13 +57,13 @@ public class BoardRenderer {
     }
 
     public void drawPieces(Graphics g, JPanel panel) {
-        for (Piece p : Game.AllPieces) {
+        for (Piece p : game.AllPieces) {
             drawSinglePiece(g, p, panel, false, 0, 0);
         }
     }
 
     public void drawDraggedPiece(Graphics g, JPanel panel, Piece active, int x, int y) {
-        if (active != null && Game.drag) {
+        if (active != null && game.drag) {
             drawSinglePiece(g, active, panel, true, x, y);
         }
     }
@@ -100,7 +102,7 @@ public class BoardRenderer {
             }
             g.fillOval((m.getToX() * Piece.size) + Piece.size/3, (m.getToY() * Piece.size) + Piece.size/3, Piece.size/3, Piece.size/3);
             g2.setColor(Color.DARK_GRAY);
-            if (Game.drag) {
+            if (game.drag) {
                 g2.fillRect(m.getFromX() * Piece.size, m.getFromY() * Piece.size, Piece.size, Piece.size);             
             } else {
                 g2.drawRect(m.getFromX() * Piece.size, m.getFromY() * Piece.size, Piece.size, Piece.size);
@@ -110,14 +112,14 @@ public class BoardRenderer {
 
     public void drawKingInCheck(Graphics g, JPanel panel) {
         g.setColor(Color.RED);
-        if (Game.player) {
-            for (Piece p : Game.wPieces) {
+        if (game.player) {
+            for (Piece p : game.wPieces) {
                 if (p instanceof King && ((King) p).isInCheck()) {
                     g.drawRect(p.getXcord() * Piece.size, p.getYcord() * Piece.size, Piece.size, Piece.size);
                 }
             }
         } else {
-            for (Piece p : Game.bPieces) {
+            for (Piece p : game.bPieces) {
                 if (p instanceof King && ((King) p).isInCheck()) {
                     g.drawRect(p.getXcord() * Piece.size, p.getYcord() * Piece.size, Piece.size, Piece.size);
                 }

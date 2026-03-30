@@ -24,7 +24,14 @@ public class Board implements Cloneable{
 	public Stack<Piece> undoneDeadPieces = new Stack<>();
 	public List<Piece> piecesList = new ArrayList<Piece>();
 	
-	public Board() {
+	private Game game;
+
+	public Game getGame() {
+		return game;
+	}
+
+	public Board(Game game) {
+		this.game = game;
 		grid = new int[ROWS][COLUMNS];
 		pieces = new Piece[ROWS][COLUMNS];
 	}
@@ -49,8 +56,8 @@ public class Board implements Cloneable{
 			died = pieces[toX][toY];
 			deadPieces.add(died);
 			piecesList.remove(died);
-			Game.AllPieces.remove(died);
-			Game.fillPieces();
+			game.AllPieces.remove(died);
+			game.fillPieces();
 		}else {
 			deadPieces.add(null);
 		}
@@ -87,8 +94,8 @@ public class Board implements Cloneable{
 			}
 			
 			if(dead != null) {
-				Game.AllPieces.add(dead);
-				Game.fillPieces();
+				game.AllPieces.add(dead);
+				game.fillPieces();
 				grid[move.toX][move.toY] = dead.getValueInTheboard();
 				pieces[move.toX][move.toY] = dead;
 				dead.setXcord(move.getToX());
@@ -97,7 +104,7 @@ public class Board implements Cloneable{
 				grid[move.toX][move.toY] = 0;
 				pieces[move.toX][move.toY] = dead;
 			}
-			Game.changeSide();
+			game.changeSide();
 		}
 		return;
 	}
@@ -128,10 +135,10 @@ public class Board implements Cloneable{
 			}
 			
 			if (dead != null) {
-				Game.AllPieces.remove(dead);
-				Game.fillPieces();
+				game.AllPieces.remove(dead);
+				game.fillPieces();
 			}
-			Game.changeSide();
+			game.changeSide();
 		}
 	}
 	
@@ -158,7 +165,7 @@ public class Board implements Cloneable{
 	}
 	
 	public Board getNewBoard() {
-		Board b = new Board();
+		Board b = new Board(this.game);
 		for(int i=0; i<8; i++) {
 			for(int j=0; j<8; j++) {
 				if(this.getPiece(i, j) != null) {

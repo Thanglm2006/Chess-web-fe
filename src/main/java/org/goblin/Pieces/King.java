@@ -67,7 +67,7 @@ public class King extends Piece {
 				if(board.getPiece(k, yCord) != null) {
 					return false;
 				}
-				for(Move m: Game.allEnemysMove) {
+				for(Move m: board.getGame().allEnemysMove) {
 					if((m.getToX() == k || m.getToX() == xCord) && m.getToY() == yCord) {
 						return false;
 					}
@@ -81,7 +81,7 @@ public class King extends Piece {
 				if(board.getPiece(k, yCord) != null) {
 					return false;
 				}
-				for(Move m: Game.allEnemysMove) {
+				for(Move m: board.getGame().allEnemysMove) {
 					if((m.getToX() == k || m.getToX() == xCord) && m.getToY() == yCord) {
 						return false;
 					}
@@ -127,7 +127,7 @@ public class King extends Piece {
 	}
 	
 	public boolean isInCheck() {
-		for(Move m: Game.allEnemysMove) {
+		for(Move m: board.getGame().allEnemysMove) {
 			if(m.getToX() == xCord && m.getToY() == yCord) {
 				return true;
 			}

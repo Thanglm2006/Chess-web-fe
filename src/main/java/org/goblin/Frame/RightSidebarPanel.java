@@ -133,11 +133,11 @@ public class RightSidebarPanel extends JPanel {
     }
     
     public void updateMoveList() {
-        if (moveListArea == null || Game.board == null) return;
+        if (moveListArea == null || gameContainer == null || gameContainer.getGame() == null) return;
         StringBuilder sb = new StringBuilder();
         int halfMoveCount = 1;
         
-        for (org.goblin.Board.Move m : Game.board.lastMoves) {
+        for (org.goblin.Board.Move m : gameContainer.getGame().board.lastMoves) {
             if (halfMoveCount % 2 != 0) {
                 sb.append((halfMoveCount / 2 + 1)).append(". ").append(m.getNotation()).append("   ");
             } else {

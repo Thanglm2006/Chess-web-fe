@@ -37,7 +37,7 @@ public abstract class Piece implements Cloneable{
 	public boolean alive() {
 		if (board.getXY(xCord, yCord) != valueInTheBoard || board.getXY(xCord, yCord) == 0 || board.getPiece(xCord, yCord) == null) {
 			isAlive = false;
-			Game.AllPieces.remove(getClass());
+			board.getGame().AllPieces.remove(getClass());
 		}
 		return isAlive;
 	}
