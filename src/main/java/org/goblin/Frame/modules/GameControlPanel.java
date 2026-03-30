@@ -31,7 +31,22 @@ public class GameControlPanel extends JPanel {
         topTabs.setPreferredSize(new Dimension(380, 60));
         topTabs.setBackground(Theme.BG_DARK);
         topTabs.add(createTab("⚡ Chơi", true));
-        topTabs.add(createTab("+ Ván mới", false));
+        
+        JLabel newGameTab = createTab("+ Ván mới", false);
+        newGameTab.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        newGameTab.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+                    "Bạn có muốn thoát ván cờ hiện tại để quay lại sảnh chọn ván mới?", 
+                    "Tạo Ván Mới", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (parentFrame != null) {
+                        parentFrame.initStartScreen();
+                    }
+                }
+            }
+        });
+        topTabs.add(newGameTab);
         topTabs.add(createTab("Các ván đấu", false));
         topTabs.add(createTab("Các kỳ thủ", false));
         
@@ -135,8 +150,50 @@ public class GameControlPanel extends JPanel {
         // 4b. Draw / Resign
         JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
         actionRow.setBackground(Theme.BG_LIGHT);
+        JButton btnAbort = createActionBtn("❌ Hủy ván");
         JButton btnDraw = createActionBtn("½ Hòa cờ");
-        JButton btnResign = createActionBtn("🏳 Hủy");
+        JButton btnResign = createActionBtn("🏳 Xin thua");
+        
+        btnAbort.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+                "Bạn có chắc chắn muốn hủy ván cờ này? (Sẽ không tính điểm xếp hạng nếu mới bắt đầu)", 
+                "Hủy ván đấu", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (parentFrame != null) {
+                    parentFrame.initStartScreen();
+                }
+            }
+        });
+        
+        btnDraw.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+                "Bạn có muốn đề nghị hòa cờ với đối thủ?", 
+                "Đề nghị Cầu Hòa", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                JOptionPane.showMessageDialog(GameControlPanel.this, 
+                    "Đối thủ đã chấp nhận lời đề nghị hòa cờ của bạn. Ván đấu kết thúc với kết quả Hòa (1/2 - 1/2).", 
+                    "Hòa cờ", JOptionPane.INFORMATION_MESSAGE);
+                if (parentFrame != null) {
+                    parentFrame.initStartScreen();
+                }
+            }
+        });
+        
+        btnResign.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+                "Bạn có chấp nhận đầu hàng và nhận phần thua?", 
+                "Xin thua", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                JOptionPane.showMessageDialog(GameControlPanel.this, 
+                    "Bạn đã chịu thua. Trắng thắng (1-0) / Đen thắng (0-1).", 
+                    "Ván cờ kết thúc", JOptionPane.INFORMATION_MESSAGE);
+                if (parentFrame != null) {
+                    parentFrame.initStartScreen();
+                }
+            }
+        });
+        
+        actionRow.add(btnAbort);
         actionRow.add(btnDraw);
         actionRow.add(btnResign);
         
