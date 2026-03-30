@@ -1,5 +1,4 @@
-package org.goblin.Frame;
-
+package org.goblin.Frame.modules.chat;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.FocusAdapter;

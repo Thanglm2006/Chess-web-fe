@@ -1,4 +1,5 @@
-package org.goblin.Frame;
+package org.goblin.Frame.widgets;
+
 
 import javax.swing.*;
 import java.awt.*;

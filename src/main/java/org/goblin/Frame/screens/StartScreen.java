@@ -1,13 +1,13 @@
-package org.goblin.Frame;
+package org.goblin.Frame.screens;
 
 import javax.swing.*;
 import java.awt.*;
 import org.goblin.Utils.Theme;
 
 public class StartScreen extends JPanel {
-    private Frame parentFrame;
+    private MainFrame parentFrame;
 
-    public StartScreen(Frame frame) {
+    public StartScreen(MainFrame frame) {
         this.parentFrame = frame;
         this.setLayout(new GridBagLayout());
         this.setBackground(Theme.BOARD_DARK);

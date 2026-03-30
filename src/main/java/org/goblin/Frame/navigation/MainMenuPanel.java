@@ -1,12 +1,12 @@
-package org.goblin.Frame;
+package org.goblin.Frame.navigation;
 
 import javax.swing.*;
 import java.awt.*;
 import org.goblin.Utils.Theme;
 
-public class LeftSidebarPanel extends JPanel {
+public class MainMenuPanel extends JPanel {
     
-    public LeftSidebarPanel() {
+    public MainMenuPanel() {
         setPreferredSize(new Dimension(220, 800));
         setBackground(Theme.BG_DARK);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));

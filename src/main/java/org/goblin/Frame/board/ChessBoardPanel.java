@@ -1,25 +1,21 @@
-package org.goblin.Frame;
+package org.goblin.Frame.board;
 
+import org.goblin.Frame.events.MoveListener;
 import org.goblin.Game.Game;
 import org.goblin.Pieces.Piece;
+import org.goblin.Utils.Theme;
 
-import java.awt.Cursor;
-import java.awt.Graphics;
-import java.awt.Dimension;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-
-import org.goblin.Utils.Theme;
-
-public class Panel extends JPanel {
+public class ChessBoardPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-	Game game;
+	public Game game;
 	int ti,tj;
 	public static int xx, yy;
 	private MoveListener listener;
@@ -27,7 +23,7 @@ public class Panel extends JPanel {
 	private BoardRenderer renderer;
 	JPanel panel = this;
 	
-	public Panel(MoveListener listener){
+	public ChessBoardPanel(MoveListener listener){
 		this.listener = listener;
 		game = new Game();
 		this.renderer = new BoardRenderer(game);
@@ -42,8 +38,8 @@ public class Panel extends JPanel {
 		this.addKeyListener(new KeyAdapter() {
 			public void keyPressed(KeyEvent e) {
 				if(e.getKeyCode() == 37) {
-					if (Panel.this.listener != null) {
-						Panel.this.listener.onUndoRequsted();
+					if (ChessBoardPanel.this.listener != null) {
+						ChessBoardPanel.this.listener.onUndoRequsted();
 					}
 				}
 			}
@@ -63,7 +59,7 @@ public class Panel extends JPanel {
 		renderer.drawDraggedPiece(g, this, game.active, xx, yy);
 	}
 
-	class Listener extends MouseAdapter{
+	class Listener extends MouseAdapter {
 		@Override
 		public void mouseClicked(MouseEvent e) {
 			if(!isPlayable || game.gameOver) return;
@@ -142,8 +138,8 @@ public class Panel extends JPanel {
 			revalidate();
 			repaint();
 			
-			if (Panel.this.listener != null) {
-				Panel.this.listener.onMoveMade();
+			if (ChessBoardPanel.this.listener != null) {
+				ChessBoardPanel.this.listener.onMoveMade();
 			}
 		}
 	}

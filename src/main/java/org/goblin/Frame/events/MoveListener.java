@@ -1,4 +1,4 @@
-package org.goblin.Frame;
+package org.goblin.Frame.events;
 
 public interface MoveListener {
     void onMoveMade();

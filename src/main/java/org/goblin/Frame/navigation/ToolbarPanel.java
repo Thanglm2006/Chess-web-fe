@@ -1,13 +1,15 @@
-package org.goblin.Frame;
+package org.goblin.Frame.navigation;
 
-import org.goblin.Game.Game;
+import org.goblin.Frame.board.ChessBoardPanel;
+import org.goblin.Frame.screens.GameScreen;
+
 import javax.swing.*;
 import java.awt.*;
 
 public class ToolbarPanel extends JPanel {
     private Color bgGray = new Color(38, 36, 33);
     
-    public ToolbarPanel(Panel boardPanel) {
+    public ToolbarPanel(ChessBoardPanel boardPanel) {
         setPreferredSize(new Dimension(640, 100)); // Increased height
         setBackground(bgGray);
         setLayout(new GridLayout(1, 4, 15, 0));
@@ -22,11 +24,11 @@ public class ToolbarPanel extends JPanel {
             boardPanel.game.board.undoMove();
             boardPanel.repaint();
             Container parent = getParent();
-            while (parent != null && !(parent instanceof GameContainerPanel)) {
+            while (parent != null && !(parent instanceof GameScreen)) {
                 parent = parent.getParent();
             }
-            if (parent instanceof GameContainerPanel) {
-                ((GameContainerPanel) parent).updatePlayerPanels();
+            if (parent instanceof GameScreen) {
+                ((GameScreen) parent).updatePlayerPanels();
             }
         });
         

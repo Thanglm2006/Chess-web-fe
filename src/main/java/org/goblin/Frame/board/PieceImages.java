@@ -1,4 +1,4 @@
-package org.goblin.Frame;
+package org.goblin.Frame.board;
 
 import java.awt.Color;
 

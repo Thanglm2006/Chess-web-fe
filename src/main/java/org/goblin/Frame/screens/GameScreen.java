@@ -1,4 +1,11 @@
-package org.goblin.Frame;
+package org.goblin.Frame.screens;
+
+import org.goblin.Frame.board.ChessBoardPanel;
+import org.goblin.Frame.events.GameEventListener;
+import org.goblin.Frame.events.MoveListener;
+import org.goblin.Frame.modules.GameControlPanel;
+import org.goblin.Frame.navigation.ToolbarPanel;
+import org.goblin.Frame.widgets.PlayerPanel;
 
 import org.goblin.Game.Game;
 import javax.swing.*;
@@ -6,8 +13,8 @@ import java.awt.*;
 import org.goblin.Utils.Theme;
 import org.goblin.Pieces.Piece;
 
-public class GameContainerPanel extends JPanel implements GameEventListener {
-    private Panel boardPanel;
+public class GameScreen extends JPanel implements GameEventListener {
+    private ChessBoardPanel boardPanel;
     private PlayerPanel topPlayer;
     private PlayerPanel bottomPlayer;
     private ToolbarPanel toolbar;
@@ -16,18 +23,18 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
     private int whiteTime;
     private int blackTime;
     private boolean hasTimeLimit;
-    private RightSidebarPanel rightSidebar;
+    private GameControlPanel rightSidebar;
 
-    public void setRightSidebar(RightSidebarPanel panel) {
+    public void setRightSidebar(GameControlPanel panel) {
         this.rightSidebar = panel;
     }
     
-    public GameContainerPanel(int timeInSeconds, boolean isPlayable) {
+    public GameScreen(int timeInSeconds, boolean isPlayable) {
         this.setLayout(new GridBagLayout());
         this.setBackground(Theme.BG_LIGHT);
         
-        // Initialize Game and Board Panel
-        boardPanel = new Panel(new MoveListener() {
+        // Initialize Game and Board ChessBoardPanel
+        boardPanel = new ChessBoardPanel(new MoveListener() {
             @Override
             public void onMoveMade() {
                 updatePlayerPanels();

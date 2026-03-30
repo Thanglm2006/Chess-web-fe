@@ -1,13 +1,17 @@
-package org.goblin.Frame;
+package org.goblin.Frame.modules;
+
 
 import javax.swing.*;
 import java.awt.*;
-import org.goblin.Game.Game;
+
+import org.goblin.Frame.modules.chat.ChatPanel;
+import org.goblin.Frame.screens.GameScreen;
+import org.goblin.Frame.screens.MainFrame;
 import org.goblin.Utils.Theme;
 
-public class RightSidebarPanel extends JPanel {
-    private Frame parentFrame;
-    private GameContainerPanel gameContainer;
+public class GameControlPanel extends JPanel {
+    private MainFrame parentFrame;
+    private GameScreen gameContainer;
     private JTextArea moveListArea;
     private JPanel centerCards;
     private CardLayout cardLayout;
@@ -15,7 +19,7 @@ public class RightSidebarPanel extends JPanel {
     private JLabel tabChat;
     private ChatPanel chatPanel;
     
-    public RightSidebarPanel(Frame frame, GameContainerPanel gameContainer) {
+    public GameControlPanel(MainFrame frame, GameScreen gameContainer) {
         this.parentFrame = frame;
         this.gameContainer = gameContainer;
         setPreferredSize(new Dimension(380, 740));

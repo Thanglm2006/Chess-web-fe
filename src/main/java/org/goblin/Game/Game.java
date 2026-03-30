@@ -1,13 +1,14 @@
 package org.goblin.Game;
 
+import org.goblin.Frame.events.GameEventListener;
+
 import org.goblin.Board.Board;
 import org.goblin.Board.Move;
 import org.goblin.Pieces.*;
 import java.util.*;
-import org.goblin.Frame.GameEventListener;
 
 public class Game {
-	public org.goblin.Board.Board board = new org.goblin.Board.Board(this);
+	public Board board = new Board(this);
 
 	public King wk;
 	public King bk;

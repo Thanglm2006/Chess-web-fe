@@ -1,6 +1,8 @@
 package org.goblin;
 
-import org.goblin.Frame.Frame;
+
+
+import org.goblin.Frame.screens.MainFrame;
 
 import java.lang.reflect.InvocationTargetException;
 import javax.swing.SwingUtilities;
@@ -13,7 +15,7 @@ public class Main {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				new Frame();
+				new MainFrame();
 			}
 		});
 	}

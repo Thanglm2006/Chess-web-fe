@@ -1,13 +1,16 @@
-package org.goblin.Frame;
+package org.goblin.Frame.modules;
 
 import javax.swing.*;
 import java.awt.*;
+
+
+import org.goblin.Frame.screens.MainFrame;
 import org.goblin.Utils.Theme;
 
-public class RightSidebarStartPanel extends JPanel {
-    private Frame parentFrame;
+public class GameSetupPanel extends JPanel {
+    private MainFrame parentFrame;
     
-    public RightSidebarStartPanel(Frame frame) {
+    public GameSetupPanel(MainFrame frame) {
         this.parentFrame = frame;
         setPreferredSize(new Dimension(380, 800));
         setBackground(Theme.BG_DARK);

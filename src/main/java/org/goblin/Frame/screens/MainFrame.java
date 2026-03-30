@@ -1,14 +1,17 @@
-package org.goblin.Frame;
+package org.goblin.Frame.screens;
 
-import javax.swing.JFrame;
-import java.awt.Dimension;
+import org.goblin.Frame.modules.GameControlPanel;
+import org.goblin.Frame.modules.GameSetupPanel;
+import org.goblin.Frame.navigation.MainMenuPanel;
 import org.goblin.Utils.Theme;
 
-public class Frame extends JFrame {
+import javax.swing.*;
+
+public class MainFrame extends JFrame {
 	
 	private static final long serialVersionUID = -4442947819954124379L;
 	
-	public Frame() {
+	public MainFrame() {
 		this.setTitle("Chess.com Desktop Clone");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setResizable(false);
@@ -25,15 +28,15 @@ public class Frame extends JFrame {
 		this.setLayout(new java.awt.BorderLayout());
 		
 		// Left Sidebar
-		this.add(new LeftSidebarPanel(), java.awt.BorderLayout.WEST);
+		this.add(new MainMenuPanel(), java.awt.BorderLayout.WEST);
 		
 		// Center Game Area (Inactive board waiting for game start)
-		GameContainerPanel centerPanel = new GameContainerPanel(0, false);
+		GameScreen centerPanel = new GameScreen(0, false);
 		// Optionally lock it here or let them drag around freely
 		this.add(centerPanel, java.awt.BorderLayout.CENTER);
 		
 		// Right Sidebar (Start Menu)
-		this.add(new RightSidebarStartPanel(this), java.awt.BorderLayout.EAST);
+		this.add(new GameSetupPanel(this), java.awt.BorderLayout.EAST);
 		
 		this.pack();
 		this.revalidate();
@@ -45,14 +48,14 @@ public class Frame extends JFrame {
 		this.setLayout(new java.awt.BorderLayout());
 		
 		// Reload Left Sidebar
-		this.add(new LeftSidebarPanel(), java.awt.BorderLayout.WEST);
+		this.add(new MainMenuPanel(), java.awt.BorderLayout.WEST);
 		
 		// Load actual Game board and timer
-		GameContainerPanel centerPanel = new GameContainerPanel(timeInSeconds, true);
+		GameScreen centerPanel = new GameScreen(timeInSeconds, true);
 		this.add(centerPanel, java.awt.BorderLayout.CENTER);
 		
 		// Swap right sidebar to the Game controls
-		RightSidebarPanel rightSidebar = new RightSidebarPanel(this, centerPanel);
+		GameControlPanel rightSidebar = new GameControlPanel(this, centerPanel);
 		centerPanel.setRightSidebar(rightSidebar);
 		this.add(rightSidebar, java.awt.BorderLayout.EAST);
 		
