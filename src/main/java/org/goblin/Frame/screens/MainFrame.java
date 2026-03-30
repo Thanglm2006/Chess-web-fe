@@ -16,7 +16,6 @@ public class MainFrame extends JFrame {
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setResizable(false);
 		this.getContentPane().setBackground(Theme.BG_LIGHT);
-		this.setPreferredSize(new java.awt.Dimension(1100, 780));
 		
 		showLoginScreen(); // Show Login screen initially
 		
@@ -55,7 +54,7 @@ public class MainFrame extends JFrame {
 		this.setLayout(new java.awt.BorderLayout());
 		
 		// Left Sidebar
-		this.add(new MainMenuPanel(), java.awt.BorderLayout.WEST);
+		this.add(new MainMenuPanel(this), java.awt.BorderLayout.WEST);
 		
 		// Center Game Area (Inactive board waiting for game start)
 		GameScreen centerPanel = new GameScreen(0, false);
@@ -75,7 +74,7 @@ public class MainFrame extends JFrame {
 		this.setLayout(new java.awt.BorderLayout());
 		
 		// Reload Left Sidebar
-		this.add(new MainMenuPanel(), java.awt.BorderLayout.WEST);
+		this.add(new MainMenuPanel(this), java.awt.BorderLayout.WEST);
 		
 		// Load actual Game board and timer
 		GameScreen centerPanel = new GameScreen(timeInSeconds, true);

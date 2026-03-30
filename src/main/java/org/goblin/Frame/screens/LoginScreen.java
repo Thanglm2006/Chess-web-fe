@@ -11,6 +11,7 @@ public class LoginScreen extends JPanel {
         this.parentFrame = frame;
         this.setLayout(new GridBagLayout());
         this.setBackground(Theme.BG_DARK);
+        this.setPreferredSize(new java.awt.Dimension(1100, 780));
 
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new GridBagLayout());
