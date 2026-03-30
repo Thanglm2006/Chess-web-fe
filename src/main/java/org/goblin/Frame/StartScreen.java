@@ -2,16 +2,15 @@ package org.goblin.Frame;
 
 import javax.swing.*;
 import java.awt.*;
+import org.goblin.Utils.Theme;
 
 public class StartScreen extends JPanel {
     private Frame parentFrame;
-    private Color darkGreen = new Color(118, 150, 86);
-    private Color lightCream = new Color(238, 238, 210);
 
     public StartScreen(Frame frame) {
         this.parentFrame = frame;
         this.setLayout(new GridBagLayout());
-        this.setBackground(darkGreen);
+        this.setBackground(Theme.BOARD_DARK);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 20, 10);
@@ -20,8 +19,8 @@ public class StartScreen extends JPanel {
         gbc.gridwidth = 2;
 
         JLabel title = new JLabel("CHESS");
-        title.setFont(new Font("Arial", Font.BOLD, 60));
-        title.setForeground(lightCream);
+        title.setFont(Theme.FONT_TITLE);
+        title.setForeground(Theme.BOARD_LIGHT);
         this.add(title, gbc);
 
         gbc.gridwidth = 1;
@@ -48,12 +47,12 @@ public class StartScreen extends JPanel {
 
     private JButton createStyledButton(String text) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("SansSerif", Font.BOLD, 18));
-        btn.setBackground(lightCream);
-        btn.setForeground(darkGreen);
+        btn.setFont(Theme.MAIN_FONT_BOLD);
+        btn.setBackground(Theme.BOARD_LIGHT);
+        btn.setForeground(Theme.BOARD_DARK);
         btn.setFocusPainted(false);
         btn.setPreferredSize(new Dimension(240, 50));
-        btn.setBorder(BorderFactory.createLineBorder(lightCream.darker(), 2));
+        btn.setBorder(BorderFactory.createLineBorder(Theme.BOARD_LIGHT.darker(), 2));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
         btn.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -61,7 +60,7 @@ public class StartScreen extends JPanel {
                 btn.setBackground(Color.WHITE);
             }
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                btn.setBackground(lightCream);
+                btn.setBackground(Theme.BOARD_LIGHT);
             }
         });
         

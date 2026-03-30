@@ -12,16 +12,9 @@ public class King extends Piece {
 	public King(int x, int y, boolean iswhite, Board board, int value) {
 		super(x, y, iswhite, board, value);
 		hasMoved = false;
-		this.pieceImage = PieceImages.KING;
 	}
 	public void intializeSide(int value){
 		super.intializeSide(value);
-		if(isWhite()) {
-			image = PieceImages.wk;
-		}
-		else {
-			image = PieceImages.bk;
-		}
 	}
 	
 	public boolean makeMove(int x, int y, Board board) {

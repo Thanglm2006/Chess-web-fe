@@ -2,6 +2,7 @@ package org.goblin.Frame;
 
 import javax.swing.JFrame;
 import java.awt.Dimension;
+import org.goblin.Utils.Theme;
 
 public class Frame extends JFrame {
 	
@@ -11,7 +12,7 @@ public class Frame extends JFrame {
 		this.setTitle("Chess.com Desktop Clone");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setResizable(false);
-		this.getContentPane().setBackground(new java.awt.Color(49, 46, 43));
+		this.getContentPane().setBackground(Theme.BG_LIGHT);
 		
 		initStartScreen(); // Show start overlay right sidebar initially
 		

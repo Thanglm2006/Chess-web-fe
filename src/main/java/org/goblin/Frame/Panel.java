@@ -14,37 +14,35 @@ import java.awt.event.MouseEvent;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import org.goblin.Utils.Theme;
+
 public class Panel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
 	Game game;
 	int ti,tj;
 	public static int xx, yy;
+	private MoveListener listener;
+	private BoardRenderer renderer;
 	JPanel panel = this;
 	
-	public Panel(){
+	public Panel(MoveListener listener){
+		this.listener = listener;
+		this.renderer = new BoardRenderer();
 		this.setFocusable(true);
 		Dimension exactSize = new Dimension(80 * 8, 80 * 8);
 		this.setPreferredSize(exactSize);
 		this.setMinimumSize(exactSize);
 		this.setMaximumSize(exactSize);
-		this.setBackground(new java.awt.Color(49, 46, 43)); // match GameContainer background
+		this.setBackground(Theme.BG_LIGHT); // match GameContainer background
 		this.addMouseListener(new Listener());
 		this.addMouseMotionListener(new Listener());
 		this.addKeyListener(new KeyAdapter() {
 			public void keyPressed(KeyEvent e) {
 				if(e.getKeyCode() == 37) {
-					Game.board.undoMove();
-					
-					// Update container if needed
-					java.awt.Container parent = getParent();
-					while (parent != null && !(parent instanceof GameContainerPanel)) {
-						parent = parent.getParent();
+					if (Panel.this.listener != null) {
+						Panel.this.listener.onUndoRequsted();
 					}
-					if (parent instanceof GameContainerPanel) {
-						((GameContainerPanel) parent).updatePlayerPanels();
-					}
-					repaint();
 				}
 			}
 		});
@@ -53,7 +51,11 @@ public class Panel extends JPanel {
 	
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
-		game.draw(g, xx, yy, this);
+		renderer.drawBoard(g);
+		renderer.drawPieces(g, this);
+		renderer.drawPossibleMoves(g, this, game.active);
+		renderer.drawKingInCheck(g, this);
+		renderer.drawDraggedPiece(g, this, game.active, xx, yy);
 	}
 
 	class Listener extends MouseAdapter{
@@ -135,12 +137,8 @@ public class Panel extends JPanel {
 			revalidate();
 			repaint();
 			
-			java.awt.Container parent = getParent();
-			while (parent != null && !(parent instanceof GameContainerPanel)) {
-				parent = parent.getParent();
-			}
-			if (parent instanceof GameContainerPanel) {
-				((GameContainerPanel) parent).updatePlayerPanels();
+			if (Panel.this.listener != null) {
+				Panel.this.listener.onMoveMade();
 			}
 		}
 	}

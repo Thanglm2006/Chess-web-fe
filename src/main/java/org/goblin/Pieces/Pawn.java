@@ -12,17 +12,10 @@ public class Pawn extends Piece {
 	public Pawn(int x, int y, boolean iswhite, Board board, int value) {
 		super(x, y, iswhite, board, value);
 		firstMove = true;
-		this.pieceImage = PieceImages.PAWN;
 	}
 	
 	public void intializeSide(int value){
 		super.intializeSide(value);
-		if(isWhite()) {
-			image = PieceImages.wp;
-		}
-		else {
-			image = PieceImages.bp;
-		}
 	}
 
 	@Override

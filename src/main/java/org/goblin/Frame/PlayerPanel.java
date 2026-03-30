@@ -2,6 +2,7 @@ package org.goblin.Frame;
 
 import javax.swing.*;
 import java.awt.*;
+import org.goblin.Utils.Theme;
 
 public class PlayerPanel extends JPanel {
     private String username;
@@ -13,13 +14,6 @@ public class PlayerPanel extends JPanel {
     // Components
     private JLabel timerLabel;
     private JPanel timerBox;
-    
-    // Colors
-    private Color bgGray = new Color(38, 36, 33);
-    private Color timerInactiveBg = new Color(55, 51, 48);
-    private Color timerActiveBg = new Color(255, 255, 255);
-    private Color timerInactiveText = new Color(200, 200, 200);
-    private Color timerActiveText = new Color(0, 0, 0);
 
     public PlayerPanel(String username, int elo, boolean isWhite, int timeInSeconds) {
         this.username = username;
@@ -32,7 +26,7 @@ public class PlayerPanel extends JPanel {
         setPreferredSize(size);
         setMinimumSize(size);
         setMaximumSize(size);
-        setBackground(bgGray);
+        setBackground(Theme.BG_DARK);
         setLayout(new BorderLayout());
         
         // Left side: Avatar + Info
@@ -50,12 +44,12 @@ public class PlayerPanel extends JPanel {
         JPanel textPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         textPanel.setOpaque(false);
         JLabel nameLabel = new JLabel(username);
-        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
-        nameLabel.setForeground(Color.WHITE);
+        nameLabel.setFont(Theme.MAIN_FONT_BOLD);
+        nameLabel.setForeground(Theme.TEXT_NORMAL);
         
         JLabel eloLabel = new JLabel("(" + elo + ")");
         eloLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        eloLabel.setForeground(Color.LIGHT_GRAY);
+        eloLabel.setForeground(Theme.TEXT_GRAY);
         
         JLabel flagLabel = new JLabel(isWhite ? "🏳" : "🏴");
         
@@ -74,11 +68,11 @@ public class PlayerPanel extends JPanel {
         // Right side: Timer Box
         timerBox = new JPanel(new GridBagLayout());
         timerBox.setPreferredSize(new Dimension(100, 40));
-        timerBox.setBackground(timerInactiveBg);
+        timerBox.setBackground(Theme.BG_TIMER_INACTIVE);
         
         timerLabel = new JLabel(formatTime(timeInSeconds));
         timerLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
-        timerLabel.setForeground(timerInactiveText);
+        timerLabel.setForeground(Theme.TEXT_TIMER_INACTIVE);
         timerBox.add(timerLabel);
         
         JPanel timerWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 5));
@@ -97,11 +91,11 @@ public class PlayerPanel extends JPanel {
         
         // Update styling based on active state
         if (isActive) {
-            timerBox.setBackground(timerActiveBg);
-            timerLabel.setForeground(timerActiveText);
+            timerBox.setBackground(Theme.BG_TIMER_ACTIVE);
+            timerLabel.setForeground(Theme.TEXT_TIMER_ACTIVE);
         } else {
-            timerBox.setBackground(timerInactiveBg);
-            timerLabel.setForeground(timerInactiveText);
+            timerBox.setBackground(Theme.BG_TIMER_INACTIVE);
+            timerLabel.setForeground(Theme.TEXT_TIMER_INACTIVE);
         }
     }
     

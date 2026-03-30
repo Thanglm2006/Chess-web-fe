@@ -2,17 +2,15 @@ package org.goblin.Frame;
 
 import javax.swing.*;
 import java.awt.*;
+import org.goblin.Utils.Theme;
 
 public class RightSidebarStartPanel extends JPanel {
-    private Color bgGray = new Color(38, 36, 33);
-    private Color bgLightGray = new Color(49, 46, 43);
-    private Color greenBtn = new Color(129, 182, 76);
     private Frame parentFrame;
     
     public RightSidebarStartPanel(Frame frame) {
         this.parentFrame = frame;
         setPreferredSize(new Dimension(380, 800));
-        setBackground(bgGray);
+        setBackground(Theme.BG_DARK);
         setLayout(new FlowLayout(FlowLayout.CENTER, 15, 25));
         setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
         
@@ -37,37 +35,37 @@ public class RightSidebarStartPanel extends JPanel {
         
         for (int i = 0; i < timeLabels.length; i++) {
         	JButton btn = new JButton(timeLabels[i]);
-        	btn.setFont(new Font("SansSerif", Font.BOLD, 17));
-        	btn.setBackground(bgLightGray);
-        	btn.setForeground(Color.WHITE);
+        	btn.setFont(Theme.MAIN_FONT_BOLD);
+        	btn.setBackground(Theme.BG_LIGHT);
+        	btn.setForeground(Theme.TEXT_NORMAL);
         	btn.setFocusPainted(false);
-        	btn.setBorder(BorderFactory.createLineBorder(bgGray, 2));
+        	btn.setBorder(BorderFactory.createLineBorder(Theme.BG_DARK, 2));
         	btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         	
         	int val = timeVals[i];
         	btn.addActionListener(e -> {
         		selectedTime[0] = val;
         		for (JButton b : timeBtns) {
-        			b.setBackground(bgLightGray);
-        			b.setBorder(BorderFactory.createLineBorder(bgGray, 2));
+        			b.setBackground(Theme.BG_LIGHT);
+        			b.setBorder(BorderFactory.createLineBorder(Theme.BG_DARK, 2));
         		}
-        		btn.setBackground(new Color(60, 58, 56));
-        		btn.setBorder(BorderFactory.createLineBorder(greenBtn, 2));
+        		btn.setBackground(Theme.BTN_BG_GRAY);
+        		btn.setBorder(BorderFactory.createLineBorder(Theme.GREEN_BTN, 2));
         	});
         	timeBtns[i] = btn;
         	timeGrid.add(btn);
         }
         
         // Highlight default 5 mins
-        timeBtns[2].setBackground(new Color(60, 58, 56));
-        timeBtns[2].setBorder(BorderFactory.createLineBorder(greenBtn, 2));
+        timeBtns[2].setBackground(Theme.BTN_BG_GRAY);
+        timeBtns[2].setBorder(BorderFactory.createLineBorder(Theme.GREEN_BTN, 2));
         
         // Play Button
         JButton playBtn = new JButton("Bắt đầu ván cờ");
         playBtn.setPreferredSize(new Dimension(340, 80));
-        playBtn.setFont(new Font("SansSerif", Font.BOLD, 30));
-        playBtn.setBackground(greenBtn);
-        playBtn.setForeground(Color.WHITE);
+        playBtn.setFont(Theme.FONT_LARGE_BOLD);
+        playBtn.setBackground(Theme.GREEN_BTN);
+        playBtn.setForeground(Theme.TEXT_NORMAL);
         playBtn.setFocusPainted(false);
         playBtn.setBorderPainted(false);
         playBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -92,9 +90,9 @@ public class RightSidebarStartPanel extends JPanel {
     
     private void styleSecondaryBtn(JButton btn) {
         btn.setPreferredSize(new Dimension(340, 60));
-        btn.setFont(new Font("SansSerif", Font.BOLD, 20));
-        btn.setBackground(bgLightGray);
-        btn.setForeground(Color.WHITE);
+        btn.setFont(Theme.MAIN_FONT_BOLD);
+        btn.setBackground(Theme.BG_LIGHT);
+        btn.setForeground(Theme.TEXT_NORMAL);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -102,10 +100,10 @@ public class RightSidebarStartPanel extends JPanel {
     
     private JLabel createTab(String text, boolean active) {
         JLabel lbl = new JLabel("<html><center>" + text + "</center></html>", SwingConstants.CENTER);
-        lbl.setFont(new Font("SansSerif", Font.BOLD, 14));
-        lbl.setForeground(active ? Color.WHITE : Color.GRAY);
+        lbl.setFont(Theme.MAIN_FONT_BOLD);
+        lbl.setForeground(active ? Theme.TEXT_NORMAL : Theme.TEXT_GRAY);
         lbl.setOpaque(true);
-        lbl.setBackground(active ? bgLightGray : bgGray);
+        lbl.setBackground(active ? Theme.BG_LIGHT : Theme.BG_DARK);
         return lbl;
     }
 }

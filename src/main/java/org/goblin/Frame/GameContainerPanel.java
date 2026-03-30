@@ -3,8 +3,10 @@ package org.goblin.Frame;
 import org.goblin.Game.Game;
 import javax.swing.*;
 import java.awt.*;
+import org.goblin.Utils.Theme;
+import org.goblin.Pieces.Piece;
 
-public class GameContainerPanel extends JPanel {
+public class GameContainerPanel extends JPanel implements GameEventListener {
     private Panel boardPanel;
     private PlayerPanel topPlayer;
     private PlayerPanel bottomPlayer;
@@ -22,10 +24,20 @@ public class GameContainerPanel extends JPanel {
     
     public GameContainerPanel(int timeInSeconds) {
         this.setLayout(new GridBagLayout());
-        this.setBackground(new Color(49, 46, 43));
+        this.setBackground(Theme.BG_LIGHT);
+        Game.setEventListener(this);
         
         // Initialize Game and Board Panel
-        boardPanel = new Panel();
+        boardPanel = new Panel(new MoveListener() {
+            @Override
+            public void onMoveMade() {
+                updatePlayerPanels();
+            }
+            @Override
+            public void onUndoRequsted() {
+                performUndo();
+            }
+        });
         
         hasTimeLimit = (timeInSeconds > 0);
         whiteTime = timeInSeconds;
@@ -119,5 +131,16 @@ public class GameContainerPanel extends JPanel {
         if (timer != null) timer.stop();
         updatePlayerPanels();
         JOptionPane.showMessageDialog(this, message, "Hết thời gian", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    @Override
+    public void onGameOver(String message) {
+        endGame(message);
+    }
+    
+    @Override
+    public int onPromotionRequested(Piece pawn) {
+        Object[] options = { "Queen", "Rook", "Knight", "Bishop" };
+        return JOptionPane.showOptionDialog(this, "Chọn quân cờ để phong cấp", "Phong cấp", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
     }
 }

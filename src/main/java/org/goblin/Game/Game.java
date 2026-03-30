@@ -2,26 +2,23 @@ package org.goblin.Game;
 
 import org.goblin.Board.Board;
 import org.goblin.Board.Move;
+import org.goblin.Frame.PieceImages;
 import org.goblin.Pieces.*;
-
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.util.*;
-
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-
-
+import org.goblin.Frame.GameEventListener;
 
 public class Game {
-	public static Board board = new Board();
+	public static org.goblin.Board.Board board = new org.goblin.Board.Board();
 
-	static King wk;
-	static King bk;
-	static ArrayList<Piece> wPieces = new ArrayList<Piece>();
-	static ArrayList<Piece> bPieces = new ArrayList<Piece>();
+	public static King wk;
+	public static King bk;
+	public static ArrayList<Piece> wPieces = new ArrayList<Piece>();
+	public static ArrayList<Piece> bPieces = new ArrayList<Piece>();
+	public static GameEventListener listener;
+
+	public static void setEventListener(GameEventListener l) {
+		listener = l;
+	}
 
 	public static boolean player = true;
 	public Piece active = null;
@@ -55,14 +52,6 @@ public class Game {
 		generatePlayersTurnMoves(board);
 		generateEnemysMoves(board);
 		checkPlayersLegalMoves();
-	}
-
-	public void draw(Graphics g, int x, int y, JPanel panel) {
-		drawBoard(g);
-		drawPiece(g, panel);
-		drawPossibleMoves(g, panel);
-		drag(active, x, y, g, panel);
-		drawKingInCheck(player, g, panel);
 	}
 
 	public static void generatePlayersTurnMoves(Board board) {
@@ -130,17 +119,15 @@ public class Game {
 		}
 		if (player) {
 			if (wk.isInCheck()) {
-				JOptionPane.showMessageDialog(null, "check mate " + (!player ? "white" : "black") + " wins");
+				if (listener != null) listener.onGameOver("check mate " + (!player ? "white" : "black") + " wins");
 			} else {
-				JOptionPane.showMessageDialog(null, "stalemate ");
-
+				if (listener != null) listener.onGameOver("stalemate ");
 			}
 		} else {
 			if (bk.isInCheck()) {
-				JOptionPane.showMessageDialog(null, "check mate " + (!player ? "white" : "black") + " wins");
+				if (listener != null) listener.onGameOver("check mate " + (!player ? "white" : "black") + " wins");
 			} else {
-				JOptionPane.showMessageDialog(null, "stalemate ");
-
+				if (listener != null) listener.onGameOver("stalemate ");
 			}
 		}
 		gameOver = true;
@@ -209,11 +196,7 @@ public class Game {
 		}
 	}
 
-	public void drag(Piece piece, int x, int y, Graphics g, JPanel panel) {
-		if (piece != null && drag == true) {
-			piece.draw2(g, player, x, y, panel);
-		}
-	}
+	// Drag UI delegate moved to BoardRenderer
 
 	public void move(int x, int y) {
 		if (active != null) {
@@ -226,66 +209,18 @@ public class Game {
 		}
 	}
 
-	public void drawKingInCheck(boolean isWhite, Graphics g, JPanel panel) {
-		g.setColor(Color.RED);
-		if (isWhite && wk.isInCheck()) {
-			g.drawRect(wk.getXcord() * Piece.size, wk.getYcord() * Piece.size, Piece.size, Piece.size);
-		} else if (bk.isInCheck()) {
-			g.drawRect(bk.getXcord() * Piece.size, bk.getYcord() * Piece.size, Piece.size, Piece.size);
-		}
-		panel.revalidate();
-		panel.repaint();
-	}
-
-	public void drawBoard(Graphics g) {
-		g.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
-				boolean isDark = ((i + j) % 2 == 1);
-				Color darkCol = new Color(118, 150, 86);
-				Color lightCol = new Color(238, 238, 210);
-				
-				if (isDark) {
-					g.setColor(darkCol);
-				} else {
-					g.setColor(lightCol);
-				}
-				g.fillRect(i * Piece.size, j * Piece.size, Piece.size, Piece.size);
-				
-				// Draw coordinates
-				// Text color should be opposite of the square color
-				g.setColor(isDark ? lightCol : darkCol);
-				
-				// Ranks (1-8) top-left
-				if (i == 0) {
-					String rank = String.valueOf(8 - j);
-					g.drawString(rank, i * Piece.size + 4, j * Piece.size + 16);
-				}
-				
-				// Files (a-h) bottom-right
-				if (j == 7) {
-					String file = String.valueOf((char) ('a' + i));
-					int strWidth = g.getFontMetrics().stringWidth(file);
-					g.drawString(file, (i + 1) * Piece.size - strWidth - 4, (j + 1) * Piece.size - 4);
-				}
-			}
-		}
-	}
+	// Drawing methods moved to BoardRenderer
 
 	public void tryToPromote(Piece p) {
 		if (p instanceof Pawn) {
 			if (((Pawn) p).madeToTheEnd()) {
-				choosePiece(p, showMessageForPromotion());
+				int choice = 0;
+				if (listener != null) {
+					choice = listener.onPromotionRequested(p);
+				}
+				choosePiece(p, choice);
 			}
 		}
-	}
-
-	public int showMessageForPromotion() {
-		Object[] options = { "Queen", "Rook", "Knight", "Bishop" };
-
-		drag = false;
-		return JOptionPane.showOptionDialog(null, "Choose Piece To Promote to", null, JOptionPane.YES_NO_CANCEL_OPTION,
-				JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 	}
 
 	public static void choosePiece(Piece p, int choice) {
@@ -320,21 +255,7 @@ public class Game {
 		fillPieces();
 	}
 
-	public void drawPossibleMoves(Graphics g, JPanel panel) {
-		Graphics2D g2 = (Graphics2D) g;
-		g2.setStroke(new BasicStroke(3));
-		if (active != null) {
-			active.showMoves(g2, panel);
-		}
-
-	}
-
-	public void drawPiece(Graphics g, JPanel panel) {
-		for (Piece p : AllPieces) {
-			p.draw(g, false, panel);
-		}
-
-	}
+	// Moved to BoardRenderer
 
 	public void loadFenPosition(String fenString) {
 		String[] parts = fenString.split(" ");

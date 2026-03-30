@@ -2,17 +2,8 @@ package org.goblin.Pieces;
 import org.goblin.Board.Board;
 import org.goblin.Board.Move;
 import org.goblin.Game.Game;
-
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.swing.ImageIcon;
-import javax.swing.JPanel;
-
-
 
 public abstract class Piece implements Cloneable{
 	protected int xCord;
@@ -21,11 +12,8 @@ public abstract class Piece implements Cloneable{
 	protected boolean isAlive;
 	protected int valueInTheBoard;
 	protected Board board;
-	protected String pieceImage;
-	protected Color pieceColor;
 	public static int size = 80;
 	protected List<Move> moves = new ArrayList<>();
-	protected ImageIcon  image;
 	
 	public boolean makeMove(int toX, int toY, Board board) {
 		Move move = new Move(xCord, yCord, toX, toY, this);
@@ -55,12 +43,6 @@ public abstract class Piece implements Cloneable{
 	}
 	
 	public void intializeSide(int value){
-		if(isWhite) {
-			pieceColor = PieceImages.WHITECOLOR;
-		}
-		else {
-			pieceColor = PieceImages.BLACKCOLOR;
-		}
 		valueInTheBoard = value;
 	};
 	
@@ -74,41 +56,7 @@ public abstract class Piece implements Cloneable{
 		board.setPieceIntoBoard(x, y, this);
 	}
 	
-	public void showMoves(Graphics g, JPanel panel) {
-		
-		Graphics2D g2 = (Graphics2D) g;
-		
-		for(Move m: moves) {
-			if(board.getPiece(m.getToX(), m.getToY()) != null && board.getPiece(m.getToX(), m.getToY()).isWhite() != isWhite()) {
-				g.setColor(Color.ORANGE);
-			}else {
-				g.setColor(Color.DARK_GRAY);
-			}
-			g.fillOval((m.getToX()*size) + size/3, (m.getToY()*size) + size/3, size/3, size/3);
-			g2.setColor(Color.DARK_GRAY);
-			if(Game.drag) {
-				g2.fillRect(m.getFromX()*size, m.getFromY()*size, size, size);				
-			}
-			else {
-				g2.drawRect(m.getFromX()*size, m.getFromY()*size, size, size);
-			}
-		}
-		panel.revalidate();
-		panel.repaint();
-	}
-	
-	
-	public void draw(Graphics g, boolean drag, JPanel panel) {
-			g.drawImage(image.getImage(), xCord*Piece.size, yCord*Piece.size, Piece.size, Piece.size, panel);
-			panel.revalidate();
-			panel.repaint();
-	}
-	
-	public void draw2(Graphics g, boolean player, int x, int y, JPanel panel) {
-			g.drawImage(image.getImage(), x - Piece.size/2, y- Piece.size/2, Piece.size, Piece.size, panel);
-			panel.revalidate();
-			panel.repaint();
-	}
+	// Drawing methods removed for Headless Backend Readiness
 	
 	public void fillAllPseudoLegalMoves(Board b) {
 		moves = new ArrayList<Move>();

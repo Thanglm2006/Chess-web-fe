@@ -3,12 +3,9 @@ package org.goblin.Frame;
 import javax.swing.*;
 import java.awt.*;
 import org.goblin.Game.Game;
+import org.goblin.Utils.Theme;
 
 public class RightSidebarPanel extends JPanel {
-    private Color bgDark = new Color(38, 36, 33);
-    private Color bgLight = new Color(49, 46, 43);
-    private Color bgBtn = new Color(60, 58, 56);
-    private Color textGray = new Color(153, 153, 153);
     private Frame parentFrame;
     private GameContainerPanel gameContainer;
     private JTextArea moveListArea;
@@ -17,13 +14,13 @@ public class RightSidebarPanel extends JPanel {
         this.parentFrame = frame;
         this.gameContainer = gameContainer;
         setPreferredSize(new Dimension(380, 740));
-        setBackground(bgDark);
+        setBackground(Theme.BG_DARK);
         setLayout(new BorderLayout());
         
         // 1. Top Tabs
         JPanel topTabs = new JPanel(new GridLayout(1, 4));
         topTabs.setPreferredSize(new Dimension(380, 60));
-        topTabs.setBackground(bgDark);
+        topTabs.setBackground(Theme.BG_DARK);
         topTabs.add(createTab("⚡ Chơi", true));
         topTabs.add(createTab("+ Ván mới", false));
         topTabs.add(createTab("Các ván đấu", false));
@@ -32,7 +29,7 @@ public class RightSidebarPanel extends JPanel {
         // 2. Sub Tabs
         JPanel subTabs = new JPanel(new GridLayout(1, 2));
         subTabs.setPreferredSize(new Dimension(380, 40));
-        subTabs.setBackground(bgDark);
+        subTabs.setBackground(Theme.BG_DARK);
         subTabs.add(createSubTab("Các nước đi", true));
         subTabs.add(createSubTab("Thông tin", false));
         
@@ -44,14 +41,14 @@ public class RightSidebarPanel extends JPanel {
         // 3. Move List Area (Center)
         moveListArea = new JTextArea();
         moveListArea.setEditable(false);
-        moveListArea.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        moveListArea.setBackground(bgLight);
-        moveListArea.setForeground(Color.WHITE);
+        moveListArea.setFont(Theme.MAIN_FONT_REGULAR);
+        moveListArea.setBackground(Theme.BG_LIGHT);
+        moveListArea.setForeground(Theme.TEXT_NORMAL);
         moveListArea.setMargin(new Insets(10, 15, 10, 15));
         
         JScrollPane scrollPane = new JScrollPane(moveListArea);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(bgLight);
+        scrollPane.getViewport().setBackground(Theme.BG_LIGHT);
         
         // Remove scrollbars for cleaner look or style them
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
@@ -61,12 +58,12 @@ public class RightSidebarPanel extends JPanel {
         // 4. Controls & Chat Area (Bottom)
         JPanel bottomArea = new JPanel();
         bottomArea.setLayout(new BoxLayout(bottomArea, BoxLayout.Y_AXIS));
-        bottomArea.setBackground(bgDark);
+        bottomArea.setBackground(Theme.BG_DARK);
         
         // 4a. Navigation Buttons
         JPanel navRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 10));
-        navRow.setBackground(bgLight);
-        navRow.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, new Color(70, 70, 70)));
+        navRow.setBackground(Theme.BG_LIGHT);
+        navRow.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, Theme.BORDER_COLOR));
         JButton btnFirst = createNavBtn("|<");
         JButton btnPrev = createNavBtn("<");
         JButton btnNext = createNavBtn(">");
@@ -103,7 +100,7 @@ public class RightSidebarPanel extends JPanel {
         
         // 4b. Draw / Resign
         JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
-        actionRow.setBackground(bgLight);
+        actionRow.setBackground(Theme.BG_LIGHT);
         JButton btnDraw = createActionBtn("½ Hòa cờ");
         JButton btnResign = createActionBtn("🏳 Hủy");
         actionRow.add(btnDraw);
@@ -111,7 +108,7 @@ public class RightSidebarPanel extends JPanel {
         
         // 4c. Player Info Text
         JPanel infoRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
-        infoRow.setBackground(bgDark);
+        infoRow.setBackground(Theme.BG_DARK);
         JLabel infoText = new JLabel("<html><font color='white'><b>VÁN CỜ MỚI</b></font><br><font color='#999999'>Đối thủ (1488) gặp Bạn (1470) (5 phút)</font></html>");
         infoText.setFont(new Font("SansSerif", Font.PLAIN, 12));
         infoRow.add(infoText);
@@ -119,11 +116,11 @@ public class RightSidebarPanel extends JPanel {
         // 4d. Chat Input
         JPanel chatRow = new JPanel(new BorderLayout());
         chatRow.setPreferredSize(new Dimension(380, 40));
-        chatRow.setBackground(bgDark);
+        chatRow.setBackground(Theme.BG_DARK);
         JTextField chatInput = new JTextField(" Gửi tin nhắn...");
-        chatInput.setBackground(bgDark);
-        chatInput.setForeground(textGray);
-        chatInput.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(70, 70, 70)));
+        chatInput.setBackground(Theme.BG_DARK);
+        chatInput.setForeground(Theme.TEXT_GRAY);
+        chatInput.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.BORDER_COLOR));
         chatRow.add(chatInput, BorderLayout.CENTER);
         
         bottomArea.add(navRow);
@@ -156,20 +153,20 @@ public class RightSidebarPanel extends JPanel {
     private JLabel createTab(String text, boolean active) {
         JLabel lbl = new JLabel("<html><center>" + text + "</center></html>", SwingConstants.CENTER);
         lbl.setFont(new Font("SansSerif", Font.BOLD, 12));
-        lbl.setForeground(active ? Color.WHITE : textGray);
+        lbl.setForeground(active ? Theme.TEXT_NORMAL : Theme.TEXT_GRAY);
         lbl.setOpaque(true);
-        lbl.setBackground(bgDark);
+        lbl.setBackground(Theme.BG_DARK);
         return lbl;
     }
     
     private JLabel createSubTab(String text, boolean active) {
         JLabel lbl = new JLabel("<html><center>" + text + "</center></html>", SwingConstants.CENTER);
         lbl.setFont(new Font("SansSerif", Font.BOLD, 14));
-        lbl.setForeground(active ? Color.WHITE : textGray);
+        lbl.setForeground(active ? Theme.TEXT_NORMAL : Theme.TEXT_GRAY);
         lbl.setOpaque(true);
-        lbl.setBackground(bgDark);
+        lbl.setBackground(Theme.BG_DARK);
         if (active) {
-            lbl.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.WHITE));
+            lbl.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Theme.TEXT_NORMAL));
         }
         return lbl;
     }
@@ -178,8 +175,8 @@ public class RightSidebarPanel extends JPanel {
         JButton btn = new JButton(txt);
         btn.setPreferredSize(new Dimension(60, 40));
         btn.setFont(new Font("SansSerif", Font.BOLD, 18));
-        btn.setBackground(bgBtn);
-        btn.setForeground(Color.WHITE);
+        btn.setBackground(Theme.BTN_BG_GRAY);
+        btn.setForeground(Theme.TEXT_NORMAL);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -189,8 +186,8 @@ public class RightSidebarPanel extends JPanel {
     private JButton createActionBtn(String txt) {
         JButton btn = new JButton(txt);
         btn.setFont(new Font("SansSerif", Font.BOLD, 14));
-        btn.setBackground(bgLight);
-        btn.setForeground(Color.WHITE);
+        btn.setBackground(Theme.BG_LIGHT);
+        btn.setForeground(Theme.TEXT_NORMAL);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));

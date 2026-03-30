@@ -1,4 +1,4 @@
-package org.goblin.Pieces;
+package org.goblin.Frame;
 
 import java.awt.Color;
 
