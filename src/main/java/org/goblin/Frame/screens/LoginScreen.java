@@ -2,6 +2,11 @@ package org.goblin.Frame.screens;
 
 import javax.swing.*;
 import java.awt.*;
+
+import org.goblin.Frame.components.CustomPasswordField;
+import org.goblin.Frame.components.CustomTextField;
+import org.goblin.Frame.components.GoogleAuthButton;
+import org.goblin.Frame.components.PrimaryButton;
 import org.goblin.Utils.Theme;
 
 public class LoginScreen extends JPanel {
@@ -30,20 +35,18 @@ public class LoginScreen extends JPanel {
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         // --- Input Fields ---
-        JTextField userField = createTextField("Tên đăng nhập hoặc Email");
-        JPasswordField passField = createPasswordField("Mật khẩu");
+        CustomTextField userField = new CustomTextField("Tên đăng nhập hoặc Email");
+        CustomPasswordField passField = new CustomPasswordField("Mật khẩu");
         
         // --- Login Button ---
-        JButton loginBtn = new JButton("Đăng Nhập");
-        stylePrimaryButton(loginBtn);
+        PrimaryButton loginBtn = new PrimaryButton("Đăng Nhập");
         loginBtn.addActionListener(e -> {
             // TODO: Kết nối API Backend tại đây. Dưới đây là luồng giả lập thành công.
             parentFrame.loginSuccess();
         });
         
         // --- Google OAuth Button ---
-        JButton googleBtn = new JButton("G | Đăng nhập bằng Google");
-        styleGoogleButton(googleBtn);
+        GoogleAuthButton googleBtn = new GoogleAuthButton("G | Đăng nhập bằng Google");
         googleBtn.addActionListener(e -> {
             // TODO: Tạo Component mở Default System Browser chui vào link Oauth2.
             JOptionPane.showMessageDialog(this, "[Hệ thống]: Chờ API Backend mở trình duyệt lấy Token OAuth2...", "Tính năng Google Login", JOptionPane.INFORMATION_MESSAGE);
@@ -82,91 +85,5 @@ public class LoginScreen extends JPanel {
         formPanel.add(registerLink, gbc);
 
         this.add(formPanel);
-    }
-    
-    private JTextField createTextField(String placeholder) {
-        JTextField field = new JTextField() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                if (getText().isEmpty()) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setFont(getFont());
-                    g2.setColor(Theme.TEXT_GRAY);
-                    FontMetrics fm = g2.getFontMetrics();
-                    int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                    g2.drawString(placeholder, getInsets().left, y);
-                    g2.dispose();
-                }
-            }
-        };
-        field.setMaximumSize(new Dimension(320, 50));
-        field.setPreferredSize(new Dimension(320, 50));
-        field.setAlignmentX(Component.CENTER_ALIGNMENT);
-        field.setFont(Theme.MAIN_FONT_REGULAR);
-        field.setBackground(Theme.BG_LIGHT);
-        field.setForeground(Theme.TEXT_NORMAL);
-        field.setCaretColor(Color.WHITE);
-        field.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Theme.BORDER_COLOR, 1),
-            BorderFactory.createEmptyBorder(10, 15, 10, 15)
-        ));
-        return field;
-    }
-    
-    private JPasswordField createPasswordField(String placeholder) {
-        JPasswordField field = new JPasswordField() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                if (new String(getPassword()).isEmpty()) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setFont(getFont());
-                    g2.setColor(Theme.TEXT_GRAY);
-                    FontMetrics fm = g2.getFontMetrics();
-                    int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-                    g2.drawString(placeholder, getInsets().left, y);
-                    g2.dispose();
-                }
-            }
-        };
-        field.setMaximumSize(new Dimension(320, 50));
-        field.setPreferredSize(new Dimension(320, 50));
-        field.setAlignmentX(Component.CENTER_ALIGNMENT);
-        field.setFont(Theme.MAIN_FONT_REGULAR);
-        field.setBackground(Theme.BG_LIGHT);
-        field.setForeground(Theme.TEXT_NORMAL);
-        field.setCaretColor(Color.WHITE);
-        field.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Theme.BORDER_COLOR, 1),
-            BorderFactory.createEmptyBorder(10, 15, 10, 15)
-        ));
-        return field;
-    }
-
-    private void stylePrimaryButton(JButton btn) {
-        btn.setMaximumSize(new Dimension(320, 50));
-        btn.setPreferredSize(new Dimension(320, 50));
-        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btn.setFont(Theme.FONT_LARGE_BOLD);
-        btn.setBackground(Theme.GREEN_BTN);
-        btn.setForeground(Theme.TEXT_NORMAL);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-    }
-    
-    private void styleGoogleButton(JButton btn) {
-        btn.setMaximumSize(new Dimension(320, 50));
-        btn.setPreferredSize(new Dimension(320, 50));
-        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btn.setFont(Theme.MAIN_FONT_BOLD);
-        btn.setBackground(Color.WHITE);
-        btn.setForeground(new Color(68, 68, 68)); // Xám đậm Google
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createLineBorder(new Color(218, 220, 224), 2));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
     }
 }
