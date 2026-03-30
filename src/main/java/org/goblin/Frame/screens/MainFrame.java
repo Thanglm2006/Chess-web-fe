@@ -16,11 +16,38 @@ public class MainFrame extends JFrame {
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setResizable(false);
 		this.getContentPane().setBackground(Theme.BG_LIGHT);
+		this.setPreferredSize(new java.awt.Dimension(1100, 780));
 		
-		initStartScreen(); // Show start overlay right sidebar initially
+		showLoginScreen(); // Show Login screen initially
 		
+		this.pack();
 		this.setLocationRelativeTo(null);
 		this.setVisible(true);
+	}
+	
+	public void showLoginScreen() {
+		this.getContentPane().removeAll();
+		this.setLayout(new java.awt.BorderLayout());
+		this.add(new LoginScreen(this), java.awt.BorderLayout.CENTER);
+		
+		this.pack();
+		this.setLocationRelativeTo(null);
+		this.revalidate();
+		this.repaint();
+	}
+	
+	public void showRegisterScreen() {
+		this.getContentPane().removeAll();
+		this.setLayout(new java.awt.BorderLayout());
+		this.add(new RegisterScreen(this), java.awt.BorderLayout.CENTER);
+		
+		this.pack();
+		this.revalidate();
+		this.repaint();
+	}
+	
+	public void loginSuccess() {
+		initStartScreen();
 	}
 	
 	public void initStartScreen() {
