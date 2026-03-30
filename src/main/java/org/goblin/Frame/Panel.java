@@ -23,6 +23,7 @@ public class Panel extends JPanel {
 	int ti,tj;
 	public static int xx, yy;
 	private MoveListener listener;
+	private boolean isPlayable = true;
 	private BoardRenderer renderer;
 	JPanel panel = this;
 	
@@ -49,6 +50,10 @@ public class Panel extends JPanel {
 		});
 	}
 	
+	public void setPlayable(boolean playable) {
+		this.isPlayable = playable;
+	}
+	
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		renderer.drawBoard(g);
@@ -61,7 +66,7 @@ public class Panel extends JPanel {
 	class Listener extends MouseAdapter{
 		@Override
 		public void mouseClicked(MouseEvent e) {
-			if(game.gameOver) return;
+			if(!isPlayable || game.gameOver) return;
 			if(!game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
 			
 			if(SwingUtilities.isLeftMouseButton(e)) {
@@ -79,7 +84,7 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseMoved(MouseEvent e) {
-			if(game.gameOver || !game.board.undoneMoves.isEmpty()) {
+			if(!isPlayable || game.gameOver || !game.board.undoneMoves.isEmpty()) {
 				setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
 				return;
 			}
@@ -99,7 +104,7 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseDragged(MouseEvent e) {
-			if(game.gameOver) return;
+			if(!isPlayable || game.gameOver) return;
 			if(!game.board.undoneMoves.isEmpty()) return; // Cannot move while reviewing history
 			
 			if(!game.drag && game.active != null) {
@@ -121,7 +126,7 @@ public class Panel extends JPanel {
 		
 		@Override
 		public void mouseReleased(MouseEvent e) {
-			if(game.gameOver || !game.board.undoneMoves.isEmpty()) {
+			if(!isPlayable || game.gameOver || !game.board.undoneMoves.isEmpty()) {
 				game.drag = false;
 				repaint();
 				return;

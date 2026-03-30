@@ -22,7 +22,7 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
         this.rightSidebar = panel;
     }
     
-    public GameContainerPanel(int timeInSeconds) {
+    public GameContainerPanel(int timeInSeconds, boolean isPlayable) {
         this.setLayout(new GridBagLayout());
         this.setBackground(Theme.BG_LIGHT);
         
@@ -37,6 +37,7 @@ public class GameContainerPanel extends JPanel implements GameEventListener {
                 performUndo();
             }
         });
+        boardPanel.setPlayable(isPlayable);
         boardPanel.game.setEventListener(this);
         
         hasTimeLimit = (timeInSeconds > 0);

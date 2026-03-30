@@ -9,6 +9,11 @@ public class RightSidebarPanel extends JPanel {
     private Frame parentFrame;
     private GameContainerPanel gameContainer;
     private JTextArea moveListArea;
+    private JPanel centerCards;
+    private CardLayout cardLayout;
+    private JLabel tabMoves;
+    private JLabel tabChat;
+    private ChatPanel chatPanel;
     
     public RightSidebarPanel(Frame frame, GameContainerPanel gameContainer) {
         this.parentFrame = frame;
@@ -30,15 +35,23 @@ public class RightSidebarPanel extends JPanel {
         JPanel subTabs = new JPanel(new GridLayout(1, 2));
         subTabs.setPreferredSize(new Dimension(380, 40));
         subTabs.setBackground(Theme.BG_DARK);
-        subTabs.add(createSubTab("Các nước đi", true));
-        subTabs.add(createSubTab("Thông tin", false));
+        
+        tabMoves = createSubTab("Các nước đi", true);
+        tabChat = createSubTab("Trò chuyện", false);
+        
+        subTabs.add(tabMoves);
+        subTabs.add(tabChat);
         
         JPanel topWrapper = new JPanel(new BorderLayout());
         topWrapper.add(topTabs, BorderLayout.NORTH);
         topWrapper.add(subTabs, BorderLayout.SOUTH);
         this.add(topWrapper, BorderLayout.NORTH);
         
-        // 3. Move List Area (Center)
+        // 3. Center Area (CardLayout chứa Move History & Chat)
+        cardLayout = new CardLayout();
+        centerCards = new JPanel(cardLayout);
+        
+        // 3a. Move List Component
         moveListArea = new JTextArea();
         moveListArea.setEditable(false);
         moveListArea.setFont(Theme.MAIN_FONT_REGULAR);
@@ -46,16 +59,33 @@ public class RightSidebarPanel extends JPanel {
         moveListArea.setForeground(Theme.TEXT_NORMAL);
         moveListArea.setMargin(new Insets(10, 15, 10, 15));
         
-        JScrollPane scrollPane = new JScrollPane(moveListArea);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(Theme.BG_LIGHT);
+        JScrollPane moveScroll = new JScrollPane(moveListArea);
+        moveScroll.setBorder(BorderFactory.createEmptyBorder());
+        moveScroll.getViewport().setBackground(Theme.BG_LIGHT);
+        moveScroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
         
-        // Remove scrollbars for cleaner look or style them
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        // 3b. Chat Component (Modular Class)
+        chatPanel = new ChatPanel();
         
-        this.add(scrollPane, BorderLayout.CENTER);
+        centerCards.add(moveScroll, "MOVES");
+        centerCards.add(chatPanel, "CHAT");
         
-        // 4. Controls & Chat Area (Bottom)
+        this.add(centerCards, BorderLayout.CENTER);
+        
+        // Sub Tabs Logic (Switch Cards)
+        tabMoves.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                switchTab(true);
+            }
+        });
+        
+        tabChat.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                switchTab(false);
+            }
+        });
+        
+        // 4. Controls (Bottom)
         JPanel bottomArea = new JPanel();
         bottomArea.setLayout(new BoxLayout(bottomArea, BoxLayout.Y_AXIS));
         bottomArea.setBackground(Theme.BG_DARK);
@@ -113,23 +143,30 @@ public class RightSidebarPanel extends JPanel {
         infoText.setFont(new Font("SansSerif", Font.PLAIN, 12));
         infoRow.add(infoText);
         
-        // 4d. Chat Input
-        JPanel chatRow = new JPanel(new BorderLayout());
-        chatRow.setPreferredSize(new Dimension(380, 40));
-        chatRow.setBackground(Theme.BG_DARK);
-        JTextField chatInput = new JTextField(" Gửi tin nhắn...");
-        chatInput.setBackground(Theme.BG_DARK);
-        chatInput.setForeground(Theme.TEXT_GRAY);
-        chatInput.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.BORDER_COLOR));
-        chatRow.add(chatInput, BorderLayout.CENTER);
+        // Chat input removed from here, it's now inside ChatPanel
         
         bottomArea.add(navRow);
         bottomArea.add(actionRow);
         bottomArea.add(infoRow);
-        bottomArea.add(chatRow);
         
         this.add(bottomArea, BorderLayout.SOUTH);
         updateMoveList();
+    }
+    
+    private void switchTab(boolean isMoves) {
+        if (isMoves) {
+            cardLayout.show(centerCards, "MOVES");
+            tabMoves.setForeground(Theme.TEXT_NORMAL);
+            tabMoves.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Theme.TEXT_NORMAL));
+            tabChat.setForeground(Theme.TEXT_GRAY);
+            tabChat.setBorder(null);
+        } else {
+            cardLayout.show(centerCards, "CHAT");
+            tabChat.setForeground(Theme.TEXT_NORMAL);
+            tabChat.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Theme.TEXT_NORMAL));
+            tabMoves.setForeground(Theme.TEXT_GRAY);
+            tabMoves.setBorder(null);
+        }
     }
     
     public void updateMoveList() {

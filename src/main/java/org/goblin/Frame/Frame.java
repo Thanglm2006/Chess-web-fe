@@ -28,7 +28,7 @@ public class Frame extends JFrame {
 		this.add(new LeftSidebarPanel(), java.awt.BorderLayout.WEST);
 		
 		// Center Game Area (Inactive board waiting for game start)
-		GameContainerPanel centerPanel = new GameContainerPanel(0);
+		GameContainerPanel centerPanel = new GameContainerPanel(0, false);
 		// Optionally lock it here or let them drag around freely
 		this.add(centerPanel, java.awt.BorderLayout.CENTER);
 		
@@ -48,7 +48,7 @@ public class Frame extends JFrame {
 		this.add(new LeftSidebarPanel(), java.awt.BorderLayout.WEST);
 		
 		// Load actual Game board and timer
-		GameContainerPanel centerPanel = new GameContainerPanel(timeInSeconds);
+		GameContainerPanel centerPanel = new GameContainerPanel(timeInSeconds, true);
 		this.add(centerPanel, java.awt.BorderLayout.CENTER);
 		
 		// Swap right sidebar to the Game controls
