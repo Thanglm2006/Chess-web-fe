@@ -49,7 +49,7 @@ public class MainMenuPanel extends JPanel {
         profileLbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
         profileLbl.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                JOptionPane.showMessageDialog(MainMenuPanel.this, "Tính năng xem Hồ Sơ (Profile) sẽ được cập nhật sau!", "Profile", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(parentFrame, "Tính năng xem Hồ Sơ (Profile) sẽ được cập nhật sau!", "Profile", JOptionPane.INFORMATION_MESSAGE);
             }
         });
         add(profileLbl);
@@ -63,7 +63,7 @@ public class MainMenuPanel extends JPanel {
         logoutLbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
         logoutLbl.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                int confirm = JOptionPane.showConfirmDialog(MainMenuPanel.this, "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất", JOptionPane.YES_NO_OPTION);
+                int confirm = JOptionPane.showConfirmDialog(parentFrame, "Bạn có chắc chắn muốn đăng xuất?", "Đăng xuất", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     if(parentFrame != null) {
                         parentFrame.showLoginScreen();

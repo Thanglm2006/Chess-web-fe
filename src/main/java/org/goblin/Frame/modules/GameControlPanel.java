@@ -36,7 +36,7 @@ public class GameControlPanel extends JPanel {
         newGameTab.setCursor(new Cursor(Cursor.HAND_CURSOR));
         newGameTab.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+                int confirm = JOptionPane.showConfirmDialog(parentFrame, 
                     "Bạn có muốn thoát ván cờ hiện tại để quay lại sảnh chọn ván mới?", 
                     "Tạo Ván Mới", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
@@ -155,7 +155,7 @@ public class GameControlPanel extends JPanel {
         JButton btnResign = createActionBtn("🏳 Xin thua");
         
         btnAbort.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+            int confirm = JOptionPane.showConfirmDialog(parentFrame, 
                 "Bạn có chắc chắn muốn hủy ván cờ này? (Sẽ không tính điểm xếp hạng nếu mới bắt đầu)", 
                 "Hủy ván đấu", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
@@ -166,11 +166,11 @@ public class GameControlPanel extends JPanel {
         });
         
         btnDraw.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+            int confirm = JOptionPane.showConfirmDialog(parentFrame, 
                 "Bạn có muốn đề nghị hòa cờ với đối thủ?", 
                 "Đề nghị Cầu Hòa", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                JOptionPane.showMessageDialog(GameControlPanel.this, 
+                JOptionPane.showMessageDialog(parentFrame, 
                     "Đối thủ đã chấp nhận lời đề nghị hòa cờ của bạn. Ván đấu kết thúc với kết quả Hòa (1/2 - 1/2).", 
                     "Hòa cờ", JOptionPane.INFORMATION_MESSAGE);
                 if (parentFrame != null) {
@@ -180,11 +180,11 @@ public class GameControlPanel extends JPanel {
         });
         
         btnResign.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(GameControlPanel.this, 
+            int confirm = JOptionPane.showConfirmDialog(parentFrame, 
                 "Bạn có chấp nhận đầu hàng và nhận phần thua?", 
                 "Xin thua", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                JOptionPane.showMessageDialog(GameControlPanel.this, 
+                JOptionPane.showMessageDialog(parentFrame, 
                     "Bạn đã chịu thua. Trắng thắng (1-0) / Đen thắng (0-1).", 
                     "Ván cờ kết thúc", JOptionPane.INFORMATION_MESSAGE);
                 if (parentFrame != null) {
