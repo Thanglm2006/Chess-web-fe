@@ -1,10 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthService } from '../services/AuthService';
 import '../index.css';
 
 export default function MainMenu() {
     const navigate = useNavigate();
     const boardRef = useRef(null);
+    const [username, setUsername] = useState('Guest');
 
     useEffect(() => {
         if (window.Chessboard && !boardRef.current) {
@@ -26,6 +28,18 @@ export default function MainMenu() {
             }
         };
         window.addEventListener('resize', handleResize);
+
+        // Fetch user from token
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            const payload = AuthService.parseToken(token);
+            if (payload && payload.username) {
+                setUsername(payload.username);
+            } else if (payload && payload.sub) {
+                setUsername(payload.sub); // Fallback to subject if username is not present
+            }
+        }
+
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
@@ -76,7 +90,7 @@ export default function MainMenu() {
                         <div className="avatar">
                             <span className="icon">👤</span>
                         </div>
-                        <span className="username">danh284</span>
+                        <span className="username" style={{ textTransform: 'capitalize' }}>{username}</span>
                         <button className="settings-btn" onClick={handleLogout}>⚙️</button>
                     </div>
                 </div>
@@ -89,7 +103,7 @@ export default function MainMenu() {
                     <div id="main-menu-board" className="chess-board-wrapper"></div>
                     <div className="player-info-bottom">
                         <div className="avatar-small"><span className="icon">👤</span></div>
-                        <span className="username">danh284 <span className="flag">🇻🇳</span></span>
+                        <span className="username" style={{ textTransform: 'capitalize' }}>{username} <span className="flag">🇻🇳</span></span>
                     </div>
                 </div>
             </div>
