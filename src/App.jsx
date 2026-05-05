@@ -35,7 +35,7 @@ function App() {
     return (
     <Router>
         <Routes>
-            <Route path="/" element={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />
+            <Route path="/" elemzent={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route 

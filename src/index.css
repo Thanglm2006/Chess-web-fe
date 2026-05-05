@@ -272,3 +272,309 @@ button {
     border: 2px solid var(--glass-border) !important;
     border-radius: 4px;
 }
+
+/* Main Menu 3-Column Layout */
+.main-menu-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-dark);
+    display: flex;
+    z-index: 10;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    background: rgba(20, 22, 28, 0.95);
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    height: 100%;
+}
+
+.sidebar-logo {
+    padding: 0 20px 20px;
+}
+
+.sidebar-logo h2 {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.sidebar-logo h2 span {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.nav-item .icon {
+    margin-right: 15px;
+    font-size: 1.2rem;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.nav-item.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue-hover);
+    border-left: 3px solid var(--accent-blue);
+}
+
+.nav-item.trial {
+    color: var(--accent-blue);
+}
+
+.sidebar-bottom {
+    padding: 20px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.search-bar input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    width: 100%;
+    outline: none;
+    margin-left: 8px;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.user-profile .avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--eval-white);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+}
+
+.user-profile .username {
+    flex: 1;
+    margin-left: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.settings-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+/* Board Area */
+.board-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg-dark);
+    padding: 20px;
+}
+
+.board-container {
+    width: 100%;
+    max-width: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.chess-board-wrapper {
+    width: 100%;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+}
+
+.player-info-bottom {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.avatar-small {
+    width: 24px;
+    height: 24px;
+    background: var(--eval-white);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 0.8rem;
+}
+
+.player-info-bottom .username {
+    margin-left: 10px;
+    font-weight: 600;
+}
+
+.flag {
+    margin-left: 5px;
+}
+
+/* Right Panel */
+.right-panel {
+    width: 380px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--bg-dark);
+}
+
+.menu-glass-panel {
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--glass-border);
+    text-align: center;
+}
+
+.panel-header h2 {
+    font-size: 1.4rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.action-buttons {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.action-btn .btn-icon {
+    font-size: 2rem;
+    margin-right: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-text strong {
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.btn-text span {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.primary-action {
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+    color: white;
+    border: none;
+}
+
+.primary-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+}
+
+.primary-action .btn-text span {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.secondary-action {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+}
+
+.secondary-action:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.panel-footer {
+    margin-top: auto;
+    padding: 15px 20px;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-around;
+}
+
+.footer-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.footer-link:hover {
+    color: var(--text-primary);
+}
