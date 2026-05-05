@@ -5,17 +5,34 @@ import Register from './pages/Register';
 import MainMenu from './pages/MainMenu';
 import AIPlay from './pages/AIPlay';
 import OnlinePlay from './pages/OnlinePlay';
+import { AuthService } from './services/AuthService';
+import { useEffect, useState } from "react";
 import './index.css';
 
 // Simple PrivateRoute wrapper
 const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('token');
+    const [token, setToken] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const checkToken = async () => {
+            const t = await AuthService.getValidToken();
+            setToken(t);
+            setLoading(false);
+        };
+
+        checkToken();
+    }, []);
+
+    if (loading) return <div>Loading...</div>;
+
     return token ? children : <Navigate to="/login" />;
 };
 
+
 function App() {
-  const token = localStorage.getItem('token');
-  return (
+    const token = AuthService.getValidToken();
+    return (
     <Router>
         <Routes>
             <Route path="/" element={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />

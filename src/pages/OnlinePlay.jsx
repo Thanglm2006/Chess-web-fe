@@ -39,23 +39,27 @@ export default function OnlinePlay() {
     useEffect(() => { sideRef.current = side; }, [side]);
 
     useEffect(() => {
-        if (hasStarted.current) return;
-        hasStarted.current = true;
+        const init = async () => {
+            if (hasStarted.current) return;
+            hasStarted.current = true;
 
-        const token = localStorage.getItem('token');
-        if (!token) return navigate('/login');
+            const token = await AuthService.getValidToken(); // ✅ FIX
+            if (!token) return navigate('/login');
 
-        const userData = AuthService.parseToken(token);
-        if (!userData) return navigate('/login');
+            const userData = AuthService.parseToken(token);
+            if (!userData) return navigate('/login');
 
-        socketClient.connect(token, handleSocketMessage);
+            socketClient.connect(token, handleSocketMessage);
 
-        setStatus('Checking for active games...');
-        initTimer.current = setTimeout(() => {
-            if (matchStateRef.current === MATCH_STATES.INITIALIZING) {
-                joinMatchmaking(userData.userId);
-            }
-        }, 1500);
+            setStatus('Checking for active games...');
+            initTimer.current = setTimeout(() => {
+                if (matchStateRef.current === MATCH_STATES.INITIALIZING) {
+                    joinMatchmaking(userData.userId);
+                }
+            }, 1500);
+        };
+
+        init();
 
         return () => {
             socketClient.disconnect();
@@ -109,7 +113,7 @@ export default function OnlinePlay() {
                 setMatchState(MATCH_STATES.CANCELLED);
                 setStatus(msg.reason);
                 setTimeout(() => {
-                    const userData = AuthService.parseToken(localStorage.getItem('token'));
+                    const userData = AuthService.parseToken(localStorage.getItem('accessToken'));
                     joinMatchmaking(userData.userId);
                 }, 2000);
                 break;
@@ -184,7 +188,7 @@ export default function OnlinePlay() {
     const handleReject = () => {
         if (confirmTimer.current) clearInterval(confirmTimer.current);
         socketClient.send({ type: 'REJECT_MATCH', gameId: gameId });
-        const userData = AuthService.parseToken(localStorage.getItem('token'));
+        const userData = AuthService.parseToken(localStorage.getItem('accessToken'));
         joinMatchmaking(userData.userId);
     };
 

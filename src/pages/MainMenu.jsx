@@ -2,13 +2,16 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../index.css';
 
+
 export default function MainMenu() {
     const navigate = useNavigate();
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
+    const handleLogout = async () => {
+
+        localStorage.removeItem('accessToken');
         navigate('/login');
     };
+
 
     return (
         <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -23,7 +26,11 @@ export default function MainMenu() {
                         Play vs AI (AlphaOne)
                     </button>
                     
-                    <button onClick={() => navigate('/play-online')} className="secondary-btn" style={{ padding: '15px', fontSize: '1.1rem' }}>
+                    <button onClick={(e) => {
+                        e.preventDefault();
+                        console.log("Navigate");
+                        navigate('/play-online');
+                    }} className="secondary-btn" style={{ padding: '15px', fontSize: '1.1rem' }}>
                         Play Online (Multiplayer)
                     </button>
                 </div>

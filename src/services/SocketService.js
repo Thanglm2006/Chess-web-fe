@@ -30,8 +30,15 @@ export class SocketService {
             console.error("WebSocket Error:", error);
         };
         
-        this.socket.onclose = () => {
-            console.log("WebSocket connection closed.");
+        this.socket.onclose = async (event) => {
+            if (event.reason === "TOKEN_EXPIRED") {
+                const newToken = await AuthService.refreshToken();
+                localStorage.setItem("accessToken", newToken.accessToken);
+
+                reconnectWebSocket();
+            } else {
+                console.warn("WebSocket closed:", event);
+            }
         };
     }
 
