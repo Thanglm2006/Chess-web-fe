@@ -1,9 +1,32 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthService } from '../services/AuthService';
+import { GameService } from '../services/GameService';
 import '../index.css';
 
 export default function MainMenu() {
     const navigate = useNavigate();
+
+    React.useEffect(() => {
+        checkActiveGame();
+    }, []);
+
+    const checkActiveGame = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const user = AuthService.parseToken(token);
+        if (!user) return;
+
+        try {
+            const activeGameId = await GameService.getActiveGame(user.userId);
+            if (activeGameId) {
+                console.log("Found active game, redirecting...", activeGameId);
+                navigate('/play-online');
+            }
+        } catch (error) {
+            console.error("Reconnection check failed", error);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -26,6 +49,15 @@ export default function MainMenu() {
                     <button onClick={() => navigate('/play-online')} className="secondary-btn" style={{ padding: '15px', fontSize: '1.1rem' }}>
                         Play Online (Multiplayer)
                     </button>
+                    
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={() => navigate('/profile')} className="secondary-btn" style={{ padding: '10px', flex: 1 }}>
+                            My Profile
+                        </button>
+                        <button onClick={() => navigate('/friends')} className="secondary-btn" style={{ padding: '10px', flex: 1 }}>
+                            Friends
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--glass-border)' }}>

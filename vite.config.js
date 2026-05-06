@@ -10,23 +10,19 @@ export default defineConfig({
       host: 'localhost',
     },
     proxy: {
-      '/api/auth': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api/matchmaking': {
+      '/api/state': 'http://localhost:5000',
+      '/api/reset': 'http://localhost:5000',
+      '/api/models': 'http://localhost:5000',
+      '/api/move': 'http://localhost:5000',
+      '/api/ai_move': 'http://localhost:5000',
+      '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
       '/ws': {
         target: 'ws://localhost:8080',
         ws: true,
-      },
-      '/api/state': 'http://localhost:5000',
-      '/api/reset': 'http://localhost:5000',
-      '/api/models': 'http://localhost:5000',
-      '/api/move': 'http://localhost:5000',
-      '/api/ai_move': 'http://localhost:5000',
+      }
     }
   }
 })

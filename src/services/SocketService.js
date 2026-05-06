@@ -1,16 +1,23 @@
 export class SocketService {
     constructor() {
         this.socket = null;
-        this.messageHandler = null;
+        this.listeners = new Set();
+        this.messageQueue = [];
     }
 
-    connect(token, handler) {
-        this.messageHandler = handler;
-        if (this.socket) {
-            this.socket.close();
+    addListener(handler) {
+        this.listeners.add(handler);
+    }
+
+    removeListener(handler) {
+        this.listeners.delete(handler);
+    }
+
+    connect(token) {
+        if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
+            return; // Already connected or connecting
         }
 
-        // Vite proxy maps /ws to ws://localhost:8080
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
         
@@ -18,12 +25,14 @@ export class SocketService {
 
         this.socket.onopen = () => {
             console.log("WebSocket Connected Successfully!");
+            while (this.messageQueue.length > 0) {
+                const msg = this.messageQueue.shift();
+                this.socket.send(msg);
+            }
         };
 
         this.socket.onmessage = (event) => {
-            if (this.messageHandler) {
-                this.messageHandler(event.data);
-            }
+            this.listeners.forEach(handler => handler(event.data));
         };
 
         this.socket.onerror = (error) => {
@@ -36,8 +45,11 @@ export class SocketService {
     }
 
     send(jsonMessage) {
+        const msgStr = typeof jsonMessage === 'string' ? jsonMessage : JSON.stringify(jsonMessage);
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(typeof jsonMessage === 'string' ? jsonMessage : JSON.stringify(jsonMessage));
+            this.socket.send(msgStr);
+        } else {
+            this.messageQueue.push(msgStr);
         }
     }
 

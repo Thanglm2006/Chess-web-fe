@@ -162,7 +162,7 @@ header p {
     margin-bottom: 8px;
 }
 
-select, input[type="range"] {
+select, input[type="range"], .custom-input {
     width: 100%;
     background: rgba(0,0,0,0.2);
     border: 1px solid var(--glass-border);
