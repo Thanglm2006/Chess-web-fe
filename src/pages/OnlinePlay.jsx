@@ -19,7 +19,7 @@ const MATCH_STATES = {
 export default function OnlinePlay() {
     const location = useLocation();
     const initialMatchType = location.state?.matchType || 'rapid';
-    
+
     const [matchState, setMatchState] = useState(MATCH_STATES.INITIALIZING);
     const [matchType, setMatchType] = useState(initialMatchType);
     const [status, setStatus] = useState('Initializing connection...');
@@ -69,27 +69,48 @@ export default function OnlinePlay() {
     useEffect(() => { sideRef.current = side; }, [side]);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
+        const init = async () => {
+            if (hasStarted.current) return;
+            hasStarted.current = true;
 
-        socketClient.addListener(handleSocketMessage);
+            const token = await AuthService.getValidToken();
+            if (!token) {
+                navigate('/login');
+                return;
+            }
 
-        setStatus('Connected. Select a mode.');
+            socketClient.addListener(handleSocketMessage);
+            setStatus('Connected. Select a mode.');
 
-        // If redirected here with a friend invite
-        if (location.state?.inviteFriendId) {
-            setTimeout(() => {
-                setStatus('Inviting friend...');
-                socketClient.send({ 
-                    type: 'INVITE_FRIEND', 
-                    friendId: location.state.inviteFriendId,
-                    matchType: location.state.matchType || 'rapid'
-                });
-            }, 1000);
-        }
+            // If redirected here with a friend invite
+            if (location.state?.inviteFriendId) {
+                setTimeout(() => {
+                    setStatus('Inviting friend...');
+                    socketClient.send({
+                        type: 'INVITE_FRIEND',
+                        friendId: location.state.inviteFriendId,
+                        matchType: location.state.matchType || 'rapid'
+                    });
+                }, 1000);
+            } else {
+                // Check for active games or auto-join if necessary
+                const userData = AuthService.parseToken(token);
+                if (userData) {
+                    setStatus('Checking for active games...');
+                    initTimer.current = setTimeout(() => {
+                        if (matchStateRef.current === MATCH_STATES.INITIALIZING) {
+                             // Only auto-join if we weren't just redirected with an invite
+                             // Actually, let's just stay in INITIALIZING and wait for user to click "Find Match"
+                             // unless the user specifically wants auto-matchmaking.
+                             // For now, let's keep it manual to avoid confusion.
+                             setStatus('Connected. Select a mode.');
+                        }
+                    }, 1500);
+                }
+            }
+        };
+
+        init();
 
         return () => {
             socketClient.removeListener(handleSocketMessage);
@@ -98,7 +119,7 @@ export default function OnlinePlay() {
             if (clockTimer.current) clearInterval(clockTimer.current);
             hasStarted.current = false;
         };
-    }, [location]);
+    }, [location, navigate]);
 
     // Clock Timer Effect
     useEffect(() => {
@@ -124,7 +145,8 @@ export default function OnlinePlay() {
         setHasAccepted(false);
         setStatus('Searching for opponent...');
         try {
-            const userData = AuthService.parseToken(localStorage.getItem('token'));
+            const token = await AuthService.getValidToken();
+            const userData = AuthService.parseToken(token);
             await axios.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
         } catch (err) {
             setStatus('Matchmaking Error: ' + err.message);
@@ -168,9 +190,9 @@ export default function OnlinePlay() {
                 });
                 setWhiteTime(msg.timeWhite || 600);
                 setBlackTime(msg.timeBlack || 600);
-                
+
                 if (msg.chatHistory) {
-                    const token = localStorage.getItem('token');
+                    const token = localStorage.getItem('accessToken');
                     const myUser = AuthService.parseToken(token);
                     const parsedChat = msg.chatHistory.map(chatStr => {
                         try {
@@ -179,7 +201,7 @@ export default function OnlinePlay() {
                                 sender: c.senderId === myUser.userId ? 'You' : (c.senderName || 'Opponent'),
                                 text: c.text
                             };
-                        } catch(e) { return null; }
+                        } catch (e) { return null; }
                     }).filter(c => c !== null);
                     setChatMessages(parsedChat);
                 }
@@ -208,6 +230,7 @@ export default function OnlinePlay() {
                 setTimeout(() => {
                     setMatchState(MATCH_STATES.INITIALIZING);
                     setStatus('Connected. Select a mode.');
+                    // Don't auto-join here, let user decide
                 }, 2000);
                 break;
 
@@ -215,15 +238,15 @@ export default function OnlinePlay() {
                 if (confirmTimer.current) clearInterval(confirmTimer.current);
                 setSide(msg.side);
                 setOpponent(prev => ({
-                    ...prev, 
+                    ...prev,
                     id: msg.opponent || prev?.id,
                     name: msg.opponentName || prev?.name || 'Opponent',
                     rating: msg.opponentRating || prev?.rating || 1200
                 }));
                 setGameId(msg.gameId);
                 setMatchState(MATCH_STATES.COUNTDOWN);
-                setWhiteTime(600);
-                setBlackTime(600);
+                setWhiteTime(msg.timeLimit || 600);
+                setBlackTime(msg.timeLimit || 600);
                 setChatMessages([]);
                 setRematchOffered(false);
                 setRematchSent(false);
@@ -234,11 +257,11 @@ export default function OnlinePlay() {
             case 'OPPONENT_MOVE':
                 if (gameRef.current && boardRef.current) {
                     let moveResult = gameRef.current.move(msg.move.toLowerCase(), { sloppy: true });
-                    
+
                     if (!moveResult && msg.fen) {
                         gameRef.current.load(msg.fen);
                     }
-                    
+
                     boardRef.current.position(gameRef.current.fen());
                     setCurrentTurn(gameRef.current.turn());
 
@@ -268,7 +291,7 @@ export default function OnlinePlay() {
             case 'DRAW_OFFERED':
                 setDrawOfferReceived(true);
                 break;
-            
+
             case 'DRAW_REJECTED':
                 setStatus("Draw offer rejected.");
                 setDrawOfferSent(false);
@@ -281,6 +304,8 @@ export default function OnlinePlay() {
 
             case 'REMATCH_OFFERED':
                 setRematchOffered(true);
+                break;
+            default:
                 break;
         }
     };
@@ -310,6 +335,7 @@ export default function OnlinePlay() {
         if (confirmTimer.current) clearInterval(confirmTimer.current);
         socketClient.send({ type: 'REJECT_MATCH', gameId: gameId });
         setMatchState(MATCH_STATES.INITIALIZING);
+        setStatus('Connected. Select a mode.');
     };
 
     const startStartCountdown = () => {
@@ -327,23 +353,23 @@ export default function OnlinePlay() {
 
     const initBoard = (playerSide, initialFen, activeGameId) => {
         if (!window.Chess || !window.Chessboard) return;
-        
+
         const checkExist = setInterval(() => {
             const boardEl = document.getElementById('board');
             if (boardEl) {
                 clearInterval(checkExist);
-                
+
                 gameRef.current = new window.Chess(initialFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
                 setCurrentTurn(gameRef.current.turn());
-                
+
                 const onDragStart = (source, piece) => {
                     if (matchStateRef.current !== MATCH_STATES.PLAYING) return false;
-                    
+
                     const turn = gameRef.current.turn();
                     const playerChar = playerSide.toLowerCase().startsWith('w') ? 'w' : 'b';
                     if (turn !== playerChar) return false;
 
-                    if ((playerChar === 'w' && piece.search(/^b/) !== -1) || 
+                    if ((playerChar === 'w' && piece.search(/^b/) !== -1) ||
                         (playerChar === 'b' && piece.search(/^w/) !== -1)) return false;
 
                     return true;
@@ -352,16 +378,16 @@ export default function OnlinePlay() {
                 const onDrop = (source, target) => {
                     let move = gameRef.current.move({ from: source, to: target, promotion: 'q' });
                     if (move === null) return 'snapback';
-                    
+
                     setCurrentTurn(gameRef.current.turn());
-                    
+
                     const promo = move.promotion ? move.promotion : '';
                     const moveCoords = (move.from + move.to + promo).toUpperCase();
-                    
-                    socketClient.send({ 
-                        type: 'MOVE', 
-                        gameId: activeGameId, 
-                        move: moveCoords 
+
+                    socketClient.send({
+                        type: 'MOVE',
+                        gameId: activeGameId,
+                        move: moveCoords
                     });
                 };
 
@@ -428,7 +454,8 @@ export default function OnlinePlay() {
     const handleAddFriend = async () => {
         if (!opponent?.id) return;
         try {
-            const userData = AuthService.parseToken(localStorage.getItem('token'));
+            const token = await AuthService.getValidToken();
+            const userData = AuthService.parseToken(token);
             await FriendService.sendRequest(userData.userId, opponent.id);
             setFriendRequestSent(true);
             setStatus("Friend request sent!");
@@ -449,17 +476,17 @@ export default function OnlinePlay() {
     return (
         <div className="container">
             <header>
-                <h1>Online <span>Match</span> 
-                { (matchState === MATCH_STATES.PLAYING || matchState === MATCH_STATES.COUNTDOWN) && (
-                    <span style={{fontSize: '1rem', marginLeft: '20px', color: isMyTurn() ? '#4ade80' : '#f87171'}}>
-                         {isMyTurn() ? "● YOUR MOVE" : "○ OPPONENT TURN"}
-                    </span>
-                )}
-                { matchState === MATCH_STATES.OVER && (
-                    <span style={{fontSize: '1rem', marginLeft: '20px', color: 'white'}}>
-                         ■ MATCH FINISHED
-                    </span>
-                )}
+                <h1>Online <span>Match</span>
+                    {(matchState === MATCH_STATES.PLAYING || matchState === MATCH_STATES.COUNTDOWN) && (
+                        <span style={{ fontSize: '1rem', marginLeft: '20px', color: isMyTurn() ? '#4ade80' : '#f87171' }}>
+                            {isMyTurn() ? "● YOUR MOVE" : "○ OPPONENT TURN"}
+                        </span>
+                    )}
+                    {matchState === MATCH_STATES.OVER && (
+                        <span style={{ fontSize: '1rem', marginLeft: '20px', color: 'white' }}>
+                            ■ MATCH FINISHED
+                        </span>
+                    )}
                 </h1>
             </header>
 
@@ -492,16 +519,16 @@ export default function OnlinePlay() {
             )}
 
             <div className="main-layout" style={{ justifyContent: 'center' }}>
-                
+
                 {matchState === MATCH_STATES.PLAYING || matchState === MATCH_STATES.COUNTDOWN || matchState === MATCH_STATES.OVER ? (
                     <>
-                        <div className="board-column" style={{position: 'relative'}}>
+                        <div className="board-column" style={{ position: 'relative' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', padding: '0 10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ fontWeight: 'bold' }}>{opponent?.name || 'Opponent'}</div>
                                     {matchState === MATCH_STATES.PLAYING && (
-                                        <button 
-                                            onClick={handleAddFriend} 
+                                        <button
+                                            onClick={handleAddFriend}
                                             disabled={friendRequestSent}
                                             style={{ background: 'none', border: '1px solid var(--glass-border)', color: 'var(--accent-blue)', borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem', cursor: friendRequestSent ? 'default' : 'pointer', opacity: friendRequestSent ? 0.5 : 1 }}
                                         >
@@ -513,9 +540,9 @@ export default function OnlinePlay() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div id="board" style={{ width: '500px' }}></div>
-                            
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '0 10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ fontWeight: 'bold' }}>You</div>
@@ -526,16 +553,16 @@ export default function OnlinePlay() {
                             </div>
 
                             {matchState === MATCH_STATES.COUNTDOWN && (
-                                <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.8)', padding: '20px 40px', borderRadius: '15px', backdropFilter: 'blur(10px)', border: '2px solid var(--accent-purple)', zIndex: 10}}>
-                                    <h1 style={{fontSize: '4rem', margin: 0, color: 'white'}}>{countdown}</h1>
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.8)', padding: '20px 40px', borderRadius: '15px', backdropFilter: 'blur(10px)', border: '2px solid var(--accent-purple)', zIndex: 10 }}>
+                                    <h1 style={{ fontSize: '4rem', margin: 0, color: 'white' }}>{countdown}</h1>
                                 </div>
                             )}
 
                             {matchState === MATCH_STATES.OVER && (
-                                <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.85)', padding: '30px 40px', borderRadius: '15px', backdropFilter: 'blur(10px)', border: '2px solid var(--accent-blue)', zIndex: 10, textAlign: 'center', minWidth: '350px'}}>
-                                    <h1 style={{fontSize: '2.5rem', margin: '0 0 10px 0', color: 'white'}}>GAME OVER</h1>
-                                    <p style={{fontSize: '1.2rem', margin: 0, color: 'var(--text-muted)'}}>{status}</p>
-                                    
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.85)', padding: '30px 40px', borderRadius: '15px', backdropFilter: 'blur(10px)', border: '2px solid var(--accent-blue)', zIndex: 10, textAlign: 'center', minWidth: '350px' }}>
+                                    <h1 style={{ fontSize: '2.5rem', margin: '0 0 10px 0', color: 'white' }}>GAME OVER</h1>
+                                    <p style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-muted)' }}>{status}</p>
+
                                     <div style={{ marginTop: '20px' }}>
                                         {rematchOffered ? (
                                             <div>
@@ -557,7 +584,7 @@ export default function OnlinePlay() {
 
                         {/* Right Dashboard */}
                         <div className="dashboard-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div className="glass-panel" style={{minWidth: '320px'}}>
+                            <div className="glass-panel" style={{ minWidth: '320px' }}>
                                 <h2>{opponent?.name || 'Opponent'}</h2>
                                 <div className="stat-box">
                                     <span>Opponent Rating</span>
@@ -569,9 +596,9 @@ export default function OnlinePlay() {
                                 </div>
                                 <div className="stat-box">
                                     <span>Status</span>
-                                    <strong style={{color: matchState === MATCH_STATES.OVER ? 'white' : (isMyTurn() ? '#4ade80' : '#f87171')}}>
-                                        {matchState === MATCH_STATES.PLAYING 
-                                            ? (isMyTurn() ? "YOUR MOVE" : "WAITING...") 
+                                    <strong style={{ color: matchState === MATCH_STATES.OVER ? 'white' : (isMyTurn() ? '#4ade80' : '#f87171') }}>
+                                        {matchState === MATCH_STATES.PLAYING
+                                            ? (isMyTurn() ? "YOUR MOVE" : "WAITING...")
                                             : (matchState === MATCH_STATES.OVER ? "FINISHED" : "GET READY")
                                         }
                                     </strong>
@@ -591,9 +618,9 @@ export default function OnlinePlay() {
                                     ))}
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                    <input 
-                                        type="text" 
-                                        className="custom-input" 
+                                    <input
+                                        type="text"
+                                        className="custom-input"
                                         value={chatInput}
                                         onChange={(e) => setChatInput(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
@@ -609,9 +636,9 @@ export default function OnlinePlay() {
                                 <div className="glass-panel" style={{ marginTop: 'auto' }}>
                                     <h3>Game Actions</h3>
                                     <div className="btn-group" style={{ marginTop: '10px' }}>
-                                        <button 
-                                            onClick={handleOfferDraw} 
-                                            className="secondary-btn" 
+                                        <button
+                                            onClick={handleOfferDraw}
+                                            className="secondary-btn"
                                             disabled={drawOfferSent}
                                             style={{ opacity: drawOfferSent ? 0.5 : 1 }}
                                         >
@@ -625,14 +652,14 @@ export default function OnlinePlay() {
                     </>
                 ) : (
                     <div className="glass-panel" style={{ width: '450px', textAlign: 'center', padding: '40px' }}>
-                        
+
                         {matchState === MATCH_STATES.INITIALIZING && (
                             <div>
                                 <h2 style={{ marginBottom: '30px' }}>Play Online</h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                                        <select 
-                                            value={matchType} 
+                                        <select
+                                            value={matchType}
                                             onChange={(e) => setMatchType(e.target.value)}
                                             className="custom-input"
                                             style={{ padding: '10px', fontSize: '1rem', width: '200px', textAlign: 'center' }}
@@ -644,20 +671,20 @@ export default function OnlinePlay() {
                                         </select>
                                     </div>
                                     <button onClick={joinMatchmaking} className="primary-btn" style={{ padding: '15px' }}>Find Random Opponent</button>
-                                    
+
                                     <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
                                         <hr style={{ flex: 1, borderColor: 'var(--glass-border)' }} />
                                         <span style={{ margin: '0 10px', color: 'var(--text-muted)' }}>OR</span>
                                         <hr style={{ flex: 1, borderColor: 'var(--glass-border)' }} />
                                     </div>
-                                    
+
                                     <button onClick={handleCreateRoom} className="secondary-btn">Create Private Room</button>
-                                    
+
                                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                        <input 
-                                            type="text" 
-                                            className="custom-input" 
-                                            placeholder="Room Code" 
+                                        <input
+                                            type="text"
+                                            className="custom-input"
+                                            placeholder="Room Code"
                                             value={joinRoomCode}
                                             onChange={(e) => setJoinRoomCode(e.target.value.toUpperCase())}
                                         />
@@ -682,7 +709,7 @@ export default function OnlinePlay() {
                                 <button onClick={() => {
                                     setMatchState(MATCH_STATES.INITIALIZING);
                                     setRoomCode('');
-                                    socketClient.send({ type: 'LEAVE_QUEUE' }); // Assuming there might be a leave queue msg
+                                    socketClient.send({ type: 'LEAVE_QUEUE' });
                                 }} className="secondary-btn" style={{ marginTop: '20px' }}>Cancel Search</button>
                             </div>
                         )}
@@ -691,8 +718,8 @@ export default function OnlinePlay() {
                             <div className="found-ui">
                                 <h2 style={{ color: 'var(--accent-blue-hover)' }}>Match Found!</h2>
                                 <div style={{ margin: '20px 0', padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
-                                    <div style={{fontSize: '1.4rem', fontWeight: 'bold'}}>{opponent?.name}</div>
-                                    <div style={{fontSize: '1rem', color: 'var(--text-muted)'}}>{opponent?.country || 'Earth'} • Rating: {opponent?.rating}</div>
+                                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{opponent?.name}</div>
+                                    <div style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>{opponent?.country || 'Earth'} • Rating: {opponent?.rating}</div>
                                 </div>
                                 {!hasAccepted ? (
                                     <div className="btn-group">
@@ -707,15 +734,16 @@ export default function OnlinePlay() {
 
                         {matchState === MATCH_STATES.CANCELLED && (
                             <div className="cancelled-ui">
-                                <h2 style={{color: '#f87171'}}>Match Invalidated</h2>
-                                <p style={{margin: '10px 0'}}>{status}</p>
+                                <h2 style={{ color: '#f87171' }}>Match Invalidated</h2>
+                                <p style={{ margin: '10px 0' }}>{status}</p>
                             </div>
                         )}
                     </div>
                 )}
             </div>
-            
-            <style dangerouslySetInnerHTML={{ __html: `
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .loader {
                     border: 4px solid rgba(255,255,255,0.1);
                     border-top: 4px solid var(--accent-blue);

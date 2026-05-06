@@ -11,7 +11,7 @@ export default function Login() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (localStorage.getItem('token')) {
+        if (localStorage.getItem('accessToken')) {
             navigate('/menu');
         }
 
@@ -37,7 +37,7 @@ export default function Login() {
         try {
             const data = await AuthService.googleLogin(response.credential);
             if (data && data.token) {
-                localStorage.setItem('token', data.token);
+                localStorage.setItem('accessToken', data.token);
                 navigate('/menu');
             }
         } catch (err) {
@@ -54,7 +54,7 @@ export default function Login() {
         try {
             const data = await AuthService.login(identifier, password);
             if (data && data.token) {
-                localStorage.setItem('token', data.token);
+                localStorage.setItem('accessToken', data.token);
                 navigate('/menu');
             } else {
                 setError('Login failed. No token received.');

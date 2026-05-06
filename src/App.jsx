@@ -7,81 +7,96 @@ import AIPlay from './pages/AIPlay';
 import OnlinePlay from './pages/OnlinePlay';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
+import { AuthService } from './services/AuthService';
+import { useEffect, useState } from "react";
 import './index.css';
 
 import { socketClient } from './services/SocketService';
 
 // Simple PrivateRoute wrapper
 const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('token');
+    const [token, setToken] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const checkToken = async () => {
+            const t = await AuthService.getValidToken();
+            setToken(t);
+            setLoading(false);
+        };
+
+        checkToken();
+    }, []);
+
+    if (loading) return <div>Loading...</div>;
+
     return token ? children : <Navigate to="/login" />;
 };
 
 const GlobalSocket = ({ children }) => {
     React.useEffect(() => {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         if (token) {
             socketClient.connect(token);
         }
     }, []);
     return children;
 };
-
 function App() {
-  const token = localStorage.getItem('token');
-  return (
-    <Router>
-      <GlobalSocket>
-        <Routes>
-            <Route path="/" element={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route 
-                path="/menu" 
-                element={
-                    <PrivateRoute>
-                        <MainMenu />
-                    </PrivateRoute>
-                } 
-            />
-            <Route 
-                path="/play-ai" 
-                element={
-                    <PrivateRoute>
-                        <AIPlay />
-                    </PrivateRoute>
-                } 
-            />
-            <Route 
-                path="/play-online" 
-                element={
-                    <PrivateRoute>
-                        <OnlinePlay />
-                    </PrivateRoute>
-                } 
-            />
-            <Route 
-                path="/profile" 
-                element={
-                    <PrivateRoute>
-                        <Profile />
-                    </PrivateRoute>
-                } 
-            />
-            <Route 
-                path="/friends" 
-                element={
-                    <PrivateRoute>
-                        <Friends />
-                    </PrivateRoute>
-                } 
-            />
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/login" />} />
-        </Routes>
-      </GlobalSocket>
-    </Router>
-  );
+    const token = localStorage.getItem('accessToken');
+    return (
+        <Router>
+            <GlobalSocket>
+                <Routes>
+                    <Route path="/" element={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route
+                        path="/menu"
+                        element={
+                            <PrivateRoute>
+                                <MainMenu />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/play-ai"
+                        element={
+                            <PrivateRoute>
+                                <AIPlay />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/play-online"
+                        element={
+                            <PrivateRoute>
+                                <OnlinePlay />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <Profile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/friends"
+                        element={
+                            <PrivateRoute>
+                                <Friends />
+                            </PrivateRoute>
+                        }
+                    />
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="/login" />} />
+                </Routes>
+            </GlobalSocket>
+        </Router>
+    );
 }
 
 export default App;

@@ -4,7 +4,7 @@ const api = axios.create();
 
 // Request Interceptor: Attach Token
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,15 +29,15 @@ api.interceptors.response.use(
                     withCredentials: true 
                 });
                 
-                const newToken = refreshResponse.data.token;
-                localStorage.setItem('token', newToken);
+                const newToken = refreshResponse.data.accessToken || refreshResponse.data.token;
+                localStorage.setItem('accessToken', newToken);
                 
                 // Retry the original request with the new token
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return api(originalRequest);
             } catch (refreshError) {
                 // If refresh fails, user must log in again
-                localStorage.removeItem('token');
+                localStorage.removeItem('accessToken');
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
