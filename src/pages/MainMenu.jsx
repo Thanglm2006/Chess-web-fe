@@ -110,26 +110,8 @@ export default function MainMenu() {
                     <a href="#" className="nav-item active">
                         <span className="icon">♟️</span> Chơi
                     </a>
-                    <a href="#" className="nav-item">
-                        <span className="icon">🧩</span> Câu đố
-                    </a>
-                    <a href="#" className="nav-item">
-                        <span className="icon">🎓</span> Học
-                    </a>
-                    <a href="#" className="nav-item">
-                        <span className="icon">🔭</span> Đào tạo
-                    </a>
-                    <a href="#" className="nav-item">
-                        <span className="icon">📺</span> Xem
-                    </a>
                     <a href="#" className="nav-item" onClick={() => navigate('/friends')}>
                         <span className="icon">👥</span> Cộng đồng
-                    </a>
-                    <a href="#" className="nav-item">
-                        <span className="icon">⚙️</span> Khác
-                    </a>
-                    <a href="#" className="nav-item trial">
-                        <span className="icon">💎</span> Dùng thử miễn phí
                     </a>
                 </nav>
                 <div className="sidebar-bottom">
@@ -181,35 +163,11 @@ export default function MainMenu() {
                             </div>
                         </button>
 
-                        <button className="action-btn secondary-action">
-                            <span className="btn-icon">👨‍🏫</span>
-                            <div className="btn-text">
-                                <strong>Bật huấn luyện viên</strong>
-                                <span>Học khi bạn chơi với Huấn luyện viên</span>
-                            </div>
-                        </button>
-
                         <button className="action-btn secondary-action" onClick={() => navigate('/friends')}>
                             <span className="btn-icon">🤝</span>
                             <div className="btn-text">
                                 <strong>Chơi với một người bạn</strong>
                                 <span>Mời bạn đấu một ván cờ</span>
-                            </div>
-                        </button>
-
-                        <button className="action-btn secondary-action">
-                            <span className="btn-icon">🏅</span>
-                            <div className="btn-text">
-                                <strong>Các giải đấu</strong>
-                                <span>Tham gia đấu trường nơi mọi người đều có cơ hội chiến thắng</span>
-                            </div>
-                        </button>
-
-                        <button className="action-btn secondary-action">
-                            <span className="btn-icon">🎲</span>
-                            <div className="btn-text">
-                                <strong>Cờ biến thể</strong>
-                                <span>Tìm cách chơi cờ mới và thú vị hơn</span>
                             </div>
                         </button>
                     </div>
