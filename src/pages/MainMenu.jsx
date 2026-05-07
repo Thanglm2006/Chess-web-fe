@@ -5,6 +5,7 @@ import { GameService } from '../services/GameService';
 import { FriendService } from '../services/FriendService';
 import { socketClient } from '../services/SocketService';
 import '../index.css';
+import Sidebar from '../components/Sidebar';
 
 export default function MainMenu() {
     const navigate = useNavigate();
@@ -101,33 +102,7 @@ export default function MainMenu() {
 
     return (
         <div className="main-menu-wrapper">
-            {/* Left Sidebar */}
-            <div className="sidebar">
-                <div className="sidebar-logo">
-                    <h2>Alpha<span>One</span></h2>
-                </div>
-                <nav className="sidebar-nav">
-                    <a href="#" className="nav-item active">
-                        <span className="icon">♟️</span> Chơi
-                    </a>
-                    <a href="#" className="nav-item" onClick={() => navigate('/friends')}>
-                        <span className="icon">👥</span> Cộng đồng
-                    </a>
-                </nav>
-                <div className="sidebar-bottom">
-                    <div className="search-bar">
-                        <span className="icon">🔍</span>
-                        <input type="text" placeholder="Tìm kiếm" />
-                    </div>
-                    <div className="user-profile">
-                        <div className="avatar">
-                            <span className="icon">👤</span>
-                        </div>
-                        <span className="username" style={{ textTransform: 'capitalize' }}>{username}</span>
-                        <button className="settings-btn" onClick={handleLogout}>⚙️</button>
-                    </div>
-                </div>
-            </div>
+            <Sidebar username={username} />
 
             {/* Center Area (Board) */}
             <div className="board-area">

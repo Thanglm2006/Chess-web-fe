@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { UserService } from '../services/UserService';
 import { FriendService } from '../services/FriendService';
 import { socketClient } from '../services/SocketService';
+import { AuthService } from '../services/AuthService';
 import '../index.css';
+import Sidebar from '../components/Sidebar';
+import friendsIcon from '../assets/friends.svg';
 
 export default function Friends() {
     const navigate = useNavigate();
@@ -11,13 +14,30 @@ export default function Friends() {
     const [friends, setFriends] = useState([]);
     const [pending, setPending] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [username, setUsername] = useState('Guest');
     
-    // Inputs for Add/Accept
-    const [addFriendId, setAddFriendId] = useState('');
+    // Search state
+    const [searchTerm, setSearchTerm] = useState('');
     const [message, setMessage] = useState('');
-    const [matchType, setMatchType] = useState('rapid');
 
     useEffect(() => {
+        const init = async () => {
+            const token = await AuthService.getValidToken();
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
+            const payload = AuthService.parseToken(token);
+            if (payload) {
+                setUsername(payload.username || payload.sub || 'User');
+            }
+            
+            await loadData();
+        };
+
+        init();
+
         const handleSocketMessage = (data) => {
             try {
                 const msg = JSON.parse(data);
@@ -35,11 +55,7 @@ export default function Friends() {
         return () => {
             socketClient.removeListener(handleSocketMessage);
         };
-    }, []);
-
-    useEffect(() => {
-        loadData();
-    }, []);
+    }, [navigate]);
 
     const loadData = async () => {
         try {
@@ -61,137 +77,155 @@ export default function Friends() {
         }
     };
 
-    const handleSendRequest = async () => {
-        if (!addFriendId || !user) return;
-        try {
-            await FriendService.sendRequest(user.userId, addFriendId);
-            setMessage("Friend request sent!");
-            setAddFriendId('');
-            loadData();
-        } catch (err) {
-            setMessage(err.response?.data?.message || "Failed to send request.");
-        }
-    };
-
-    const handleAcceptRequest = async (fid) => {
-        if (!user) return;
-        try {
-            await FriendService.acceptRequest(fid, user.userId);
-            setMessage("Friend request accepted!");
-            loadData(); // Refresh list
-        } catch (err) {
-            setMessage(err.response?.data?.message || "Failed to accept request.");
-        }
-    };
-
-    const handleInvite = (friendId) => {
-        navigate('/play-online', { state: { inviteFriendId: friendId, matchType: matchType } });
+    const handleLogout = () => {
+        localStorage.removeItem('accessToken');
+        navigate('/login');
     };
 
     if (loading) {
         return (
-            <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="main-menu-wrapper" style={{ justifyContent: 'center', alignItems: 'center' }}>
                 <div className="loader"></div>
             </div>
         );
     }
 
     return (
-        <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
-            <header style={{ width: '100%', maxWidth: '800px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>My <span>Friends</span></h1>
-                <button onClick={() => navigate('/menu')} className="secondary-btn">Back to Menu</button>
-            </header>
-            
-            <div className="main-layout" style={{ maxWidth: '1000px', width: '100%', marginTop: '20px' }}>
-                
-                {/* Actions Column */}
-                <div className="dashboard-column" style={{ flex: '1', minWidth: '300px' }}>
-                    <div className="glass-panel">
-                        <h2>Manage Friends</h2>
-                        {message && <div style={{ color: 'var(--accent-blue)', marginBottom: '15px' }}>{message}</div>}
-                        
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '5px' }}>Send Request to ID</label>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <input 
-                                    type="number" 
-                                    className="custom-input" 
-                                    value={addFriendId} 
-                                    onChange={(e) => setAddFriendId(e.target.value)}
-                                    placeholder="User ID" 
-                                />
-                                <button className="primary-btn" onClick={handleSendRequest}>Send</button>
+        <div className="main-menu-wrapper">
+            <Sidebar username={username} />
+
+            {/* Main Content Area */}
+            <div className="friends-content">
+                <div className="friends-main-col">
+                    <div className="friends-header">
+                        <img src={friendsIcon} alt="Friends" style={{ width: '32px', height: '32px' }} />
+                        <h1>Bạn bè</h1>
+                    </div>
+
+                    {/* Action Grid */}
+                    <div className="friends-actions-grid">
+                        <div className="friend-action-btn">
+                            <div className="friend-action-content">
+                                <span className="icon">👤+</span>
+                                <span>Kết nối bạn bè</span>
                             </div>
+                            <span>&gt;</span>
+                        </div>
+                        <div className="friend-action-btn">
+                            <div className="friend-action-content">
+                                <span className="icon">🔍</span>
+                                <span>Tìm bạn</span>
+                            </div>
+                            <span>&gt;</span>
+                        </div>
+                        <div className="friend-action-btn">
+                            <div className="friend-action-content">
+                                <span className="icon">✉️</span>
+                                <span>Gửi thư mời</span>
+                            </div>
+                            <span>&gt;</span>
+                        </div>
+                        <div className="friend-action-btn">
+                            <div className="friend-action-content">
+                                <span className="icon">🔗</span>
+                                <span>Tạo lời thách đấu</span>
+                            </div>
+                            <span>&gt;</span>
+                        </div>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="friends-search-container">
+                        <span className="friends-search-icon">🔍</span>
+                        <input 
+                            type="text" 
+                            className="friends-search-input" 
+                            placeholder="Tìm theo tên hoặc tên người dùng"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Friends List */}
+                    <div className="friends-list-container">
+                        <div className="friends-list-header">
+                            <span style={{ fontWeight: 600 }}>Bạn bè <span style={{ color: '#8b92a5', marginLeft: '5px' }}>{friends.length}</span></span>
+                            <span style={{ fontSize: '0.8rem', color: '#8b92a5', cursor: 'pointer' }}>Most Recently Online ▾</span>
                         </div>
 
-                        <hr style={{ borderColor: 'var(--glass-border)', margin: '20px 0' }} />
-
-                        <h3>Pending Requests</h3>
-                        {pending.length === 0 ? (
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No pending requests.</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {pending.map(req => (
-                                    <div key={req.userId} style={{ background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ fontSize: '0.9rem' }}>
-                                            <strong>{req.username}</strong>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rating: {req.rating}</div>
+                        <div className="friends-list">
+                            {friends.length === 0 ? (
+                                <div style={{ padding: '40px', textAlign: 'center', color: '#8b92a5' }}>
+                                    Không có bạn bè nào để hiển thị
+                                </div>
+                            ) : (
+                                friends
+                                .filter(f => f.username.toLowerCase().includes(searchTerm.toLowerCase()))
+                                .map(friend => (
+                                    <div key={friend.userId} className="friend-item">
+                                        <div className="friend-info">
+                                            <div className="friend-avatar">
+                                                {friend.username.charAt(0).toUpperCase()}
+                                                <div style={{ 
+                                                    position: 'absolute', bottom: '2px', right: '2px', 
+                                                    width: '10px', height: '10px', 
+                                                    background: friend.status === 'ONLINE' ? '#4ade80' : '#8b92a5', 
+                                                    borderRadius: '50%', border: '2px solid #262626' 
+                                                }}></div>
+                                            </div>
+                                            <div className="friend-details">
+                                                <div className="friend-name-row">
+                                                    <span style={{ fontWeight: 600 }}>{friend.username}</span>
+                                                    <span className="flag">🇻🇳</span>
+                                                </div>
+                                                <span className="friend-status-text">
+                                                    {friend.status === 'ONLINE' ? 'Đang trực tuyến' : 'Ngoại tuyến'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <button className="primary-btn" style={{ padding: '4px 10px', fontSize: '0.75rem' }} onClick={() => handleAcceptRequest(req.userId)}>Accept</button>
+                                        <div className="friend-actions">
+                                            <span className="friend-action-icon" title="Thách đấu">⚔️</span>
+                                            <span className="friend-action-icon" title="Nhắn tin">✉️</span>
+                                            <span className="friend-action-icon" title="Thêm">...</span>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Friends List Column */}
-                <div className="glass-panel" style={{ flex: '2', minWidth: '400px' }}>
-                    <h2>Friends List</h2>
-                    {friends.length === 0 ? (
-                        <p style={{ color: 'var(--text-muted)' }}>You don't have any friends yet.</p>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {friends.map((friend) => (
-                                <div key={friend.userId} className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: friend.status === 'ONLINE' ? '#4ade80' : 'var(--glass-border)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', color: 'black' }}>
-                                            {friend.username.charAt(0).toUpperCase()}
+                {/* Sidebar Column */}
+                <div className="friends-sidebar-col">
+                    {/* Leaderboard Panel */}
+                    <div className="leaderboard-panel">
+                        <div className="leaderboard-header">
+                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Bảng xếp hạng Bạn bè</h3>
+                        </div>
+                        
+                        <div className="leaderboard-tabs">
+                            {['Chớp', 'Siêu chớp', 'Cờ chớp', 'Câu đố'].map((type, idx) => (
+                                <div key={type} className="leaderboard-tab-item">
+                                    <div className="leaderboard-tab-header">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span>{idx === 0 ? '⚡' : idx === 1 ? '🚀' : idx === 2 ? '⏱️' : '🧩'}</span>
+                                            <span style={{ fontSize: '0.9rem' }}>{type}</span>
                                         </div>
-                                        <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{friend.username} (ID: {friend.userId})</div>
-                                            <div style={{ fontSize: '0.9rem', color: friend.status === 'ONLINE' ? '#4ade80' : 'var(--text-muted)' }}>
-                                                {friend.status} • Rating: {friend.rating}
-                                            </div>
-                                        </div>
+                                        <span style={{ color: '#8b92a5' }}>&gt;</span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <select 
-                                            value={matchType} 
-                                            onChange={(e) => setMatchType(e.target.value)}
-                                            className="custom-input"
-                                            style={{ padding: '5px', width: '100px', opacity: friend.status !== 'ONLINE' ? 0.5 : 1 }}
-                                            disabled={friend.status !== 'ONLINE'}
-                                        >
-                                            <option value="bullet">Bullet (1m)</option>
-                                            <option value="blitz">Blitz (3m)</option>
-                                            <option value="rapid">Rapid (10m)</option>
-                                            <option value="classical">Classical (30m)</option>
-                                        </select>
-                                        <button 
-                                            className="primary-btn" 
-                                            onClick={() => handleInvite(friend.userId)}
-                                            disabled={friend.status !== 'ONLINE'}
-                                            style={{ opacity: friend.status !== 'ONLINE' ? 0.5 : 1 }}
-                                        >
-                                            Invite to Match
-                                        </button>
-                                    </div>
+                                    {/* Real data would go here */}
                                 </div>
                             ))}
                         </div>
-                    )}
+                    </div>
+
+                    {/* Suggested Friends */}
+                    <div className="leaderboard-panel" style={{ flex: 1 }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem', marginBottom: '15px' }}>Đề xuất bạn bè</h3>
+                        <div style={{ textAlign: 'center', padding: '20px', color: '#8b92a5', fontSize: '0.85rem' }}>
+                            Không có đề xuất nào hiện tại
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
