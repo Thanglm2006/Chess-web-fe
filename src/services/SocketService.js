@@ -1,3 +1,4 @@
+import { AuthService } from "./AuthService";
 export class SocketService {
     constructor() {
         this.socket = null;
@@ -13,18 +14,31 @@ export class SocketService {
         this.listeners.delete(handler);
     }
 
-    connect(token) {
-        if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
-            return; // Already connected or connecting
+    async connect() {
+        if (this.socket &&
+            (this.socket.readyState === WebSocket.OPEN ||
+             this.socket.readyState === WebSocket.CONNECTING)) {
+            return;
         }
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
-        
+        const token = await AuthService.getValidToken();
+
+        if (!token) {
+            console.error("No valid token");
+            return;
+        }
+
+        const protocol =
+            window.location.protocol === "https:" ? "wss:" : "ws:";
+
+        const wsUrl =
+            `${protocol}//${window.location.host}/ws?token=${token}`;
+
         this.socket = new WebSocket(wsUrl);
 
         this.socket.onopen = () => {
-            console.log("WebSocket Connected Successfully!");
+            console.log("WebSocket Connected!");
+
             while (this.messageQueue.length > 0) {
                 const msg = this.messageQueue.shift();
                 this.socket.send(msg);
@@ -38,22 +52,31 @@ export class SocketService {
         this.socket.onerror = (error) => {
             console.error("WebSocket Error:", error);
         };
-        
-        this.socket.onclose = async (event) => {
-            if (event.reason === "TOKEN_EXPIRED") {
-                const newToken = await AuthService.refreshToken();
-                localStorage.setItem("accessToken", newToken.accessToken);
 
-                reconnectWebSocket();
-            } else {
-                console.warn("WebSocket closed:", event);
+        this.socket.onclose = async (event) => {
+            console.warn("Socket closed:", event.reason);
+
+            this.socket = null;
+
+            if (event.reason === "TOKEN_EXPIRED") {
+                try {
+                    await AuthService.refreshToken();
+
+                    await this.connect();
+                } catch (err) {
+                    console.error("Refresh failed", err);
+                }
             }
         };
     }
 
     send(jsonMessage) {
-        const msgStr = typeof jsonMessage === 'string' ? jsonMessage : JSON.stringify(jsonMessage);
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        const msgStr =
+            typeof jsonMessage === "string"
+                ? jsonMessage
+                : JSON.stringify(jsonMessage);
+
+        if (this.socket?.readyState === WebSocket.OPEN) {
             this.socket.send(msgStr);
         } else {
             this.messageQueue.push(msgStr);

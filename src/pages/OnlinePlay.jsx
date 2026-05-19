@@ -690,6 +690,7 @@ export default function OnlinePlay() {
                                         />
                                         <button onClick={handleJoinRoom} className="secondary-btn" style={{ flex: 1 }}>Join Room</button>
                                     </div>
+                                    <h2 style={{ color: 'var(--text-muted)', marginTop: '20px' }}>{status}</h2>
                                 </div>
                                 <button onClick={() => navigate('/menu')} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', marginTop: '30px', fontWeight: 'bold' }}>Back</button>
                             </div>

@@ -20,6 +20,8 @@ Tài liệu này ghi lại các điểm cuối (endpoints) API được định 
 - `GET /api/friends/list?userId={id}`: Lấy danh sách bạn bè hiện tại.
 - `GET /api/friends/pending?userId={id}`: Lấy danh sách yêu cầu kết bạn chưa xử lý.
 - `POST /api/friends/request?senderId={id}&receiverId={id}`: Gửi lời mời kết bạn mới.
+- `POST /api/friends/accept?user1={id}&user2={id}`: Chấp nhận lời mời kết bạn.
+- `POST /api/friends/remove?user1={id}&user2={id}`: Xóa bạn bè.
 
 ### Dịch vụ Ván đấu (`GameService.js`)
 - `GET /api/game/history?userId={id}`: Truy xuất lịch sử các ván đấu cũ.

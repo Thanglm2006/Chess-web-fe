@@ -7,18 +7,32 @@ import { AuthService } from '../services/AuthService';
 import '../index.css';
 import Sidebar from '../components/Sidebar';
 import friendsIcon from '../assets/friends.svg';
+import PendingFriendModal from '../components/friend/PendingFriendModal';
 
 export default function Friends() {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [friends, setFriends] = useState([]);
     const [pending, setPending] = useState([]);
+    const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [username, setUsername] = useState('Guest');
-    
+    const [openRemoveDropdown, setOpenRemoveDropdown] = useState(null);
+    const [loadingId, setLoadingId] = useState(null);
+
     // Search state
     const [searchTerm, setSearchTerm] = useState('');
     const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        const handleOutsideClick = () => {
+            setOpenRemoveDropdown(null);
+        };
+        document.addEventListener('click', handleOutsideClick);
+        return () => {
+            document.removeEventListener('click', handleOutsideClick);
+        };
+    }, []);
 
     useEffect(() => {
         const init = async () => {
@@ -32,7 +46,7 @@ export default function Friends() {
             if (payload) {
                 setUsername(payload.username || payload.sub || 'User');
             }
-            
+
             await loadData();
         };
 
@@ -50,7 +64,7 @@ export default function Friends() {
                 console.error("Error parsing presence message", e);
             }
         };
-        
+
         socketClient.addListener(handleSocketMessage);
         return () => {
             socketClient.removeListener(handleSocketMessage);
@@ -62,7 +76,7 @@ export default function Friends() {
             setLoading(true);
             const userData = await UserService.getMe();
             setUser(userData);
-            
+
             if (userData?.userId) {
                 const friendsData = await FriendService.getList(userData.userId);
                 setFriends(Array.isArray(friendsData) ? friendsData : []);
@@ -76,10 +90,30 @@ export default function Friends() {
             setLoading(false);
         }
     };
+    const handleRemoveFriend = async (friendId) => {
+        try {
+            setLoadingId(friendId);
+            await FriendService.removeFriend(user.userId, friendId);
+            setFriends(prev => prev.filter(f => f.userId !== friendId));
+            setLoadingId(null);
+        } catch (error) {
+            console.error("Failed to remove friend", error);
+            alert("Could not remove friend");
+            setLoadingId(null);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
         navigate('/login');
+    };
+
+    const handleAcceptSuccess = (senderId) => {
+        const acceptedUser = pending.find(p => p.userId === senderId || p.senderId === senderId);
+        setPending(prev => prev.filter(p => p.userId !== senderId && p.senderId !== senderId));
+        if (acceptedUser) {
+            setFriends(prev => [...prev, { ...acceptedUser, status: 'ONLINE' }]);
+        }
     };
 
     if (loading) {
@@ -111,10 +145,13 @@ export default function Friends() {
                             </div>
                             <span>&gt;</span>
                         </div>
-                        <div className="friend-action-btn">
+                        <div className="friend-action-btn" onClick={() => setIsPendingModalOpen(true)}>
                             <div className="friend-action-content">
                                 <span className="icon">🔍</span>
                                 <span>Tìm bạn</span>
+                                {pending.length > 0 && (
+                                    <span className="pending-badge">{pending.length}</span>
+                                )}
                             </div>
                             <span>&gt;</span>
                         </div>
@@ -137,9 +174,9 @@ export default function Friends() {
                     {/* Search Bar */}
                     <div className="friends-search-container">
                         <span className="friends-search-icon">🔍</span>
-                        <input 
-                            type="text" 
-                            className="friends-search-input" 
+                        <input
+                            type="text"
+                            className="friends-search-input"
                             placeholder="Tìm theo tên hoặc tên người dùng"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -160,36 +197,55 @@ export default function Friends() {
                                 </div>
                             ) : (
                                 friends
-                                .filter(f => f.username.toLowerCase().includes(searchTerm.toLowerCase()))
-                                .map(friend => (
-                                    <div key={friend.userId} className="friend-item">
-                                        <div className="friend-info">
-                                            <div className="friend-avatar">
-                                                {friend.username.charAt(0).toUpperCase()}
-                                                <div style={{ 
-                                                    position: 'absolute', bottom: '2px', right: '2px', 
-                                                    width: '10px', height: '10px', 
-                                                    background: friend.status === 'ONLINE' ? '#4ade80' : '#8b92a5', 
-                                                    borderRadius: '50%', border: '2px solid #262626' 
-                                                }}></div>
-                                            </div>
-                                            <div className="friend-details">
-                                                <div className="friend-name-row">
-                                                    <span style={{ fontWeight: 600 }}>{friend.username}</span>
-                                                    <span className="flag">🇻🇳</span>
+                                    .filter(f => f.username.toLowerCase().includes(searchTerm.toLowerCase()))
+                                    .map(friend => (
+                                        <div key={friend.userId} className="friend-item">
+                                            <div className="friend-info">
+                                                <div className="friend-avatar">
+                                                    {friend.username.charAt(0).toUpperCase()}
+                                                    <div style={{
+                                                        position: 'absolute', bottom: '2px', right: '2px',
+                                                        width: '10px', height: '10px',
+                                                        background: friend.status === 'ONLINE' ? '#4ade80' : '#8b92a5',
+                                                        borderRadius: '50%', border: '2px solid #262626'
+                                                    }}></div>
                                                 </div>
-                                                <span className="friend-status-text">
-                                                    {friend.status === 'ONLINE' ? 'Đang trực tuyến' : 'Ngoại tuyến'}
-                                                </span>
+                                                <div className="friend-details">
+                                                    <div className="friend-name-row">
+                                                        <span style={{ fontWeight: 600 }}>{friend.username}</span>
+                                                        <span className="flag">🇻🇳</span>
+                                                    </div>
+                                                    <span className="friend-status-text">
+                                                        {friend.status === 'ONLINE' ? 'Đang trực tuyến' : 'Ngoại tuyến'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="friend-actions" style={{ position: 'relative' }}>
+                                                <span className="friend-action-icon" title="Thách đấu">⚔️</span>
+                                                <span className="friend-action-icon" title="Nhắn tin">✉️</span>
+                                                <span className="friend-action-icon"
+                                                    title="Thêm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenRemoveDropdown(openRemoveDropdown === friend.userId ? null : friend.userId);
+                                                    }}
+                                                >...</span>
+                                                {openRemoveDropdown === friend.userId && (
+                                                    <div className="friend-dropdown-menu">
+                                                        <div 
+                                                            className="friend-dropdown-item delete"
+                                                            onClick={() => {
+                                                                handleRemoveFriend(friend.userId);
+                                                                setOpenRemoveDropdown(null);
+                                                            }}
+                                                        >
+                                                            ❌ Hủy kết bạn
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="friend-actions">
-                                            <span className="friend-action-icon" title="Thách đấu">⚔️</span>
-                                            <span className="friend-action-icon" title="Nhắn tin">✉️</span>
-                                            <span className="friend-action-icon" title="Thêm">...</span>
-                                        </div>
-                                    </div>
-                                ))
+                                    ))
                             )}
                         </div>
                     </div>
@@ -202,7 +258,7 @@ export default function Friends() {
                         <div className="leaderboard-header">
                             <h3 style={{ margin: 0, fontSize: '1rem' }}>Bảng xếp hạng Bạn bè</h3>
                         </div>
-                        
+
                         <div className="leaderboard-tabs">
                             {['Chớp', 'Siêu chớp', 'Cờ chớp', 'Câu đố'].map((type, idx) => (
                                 <div key={type} className="leaderboard-tab-item">
@@ -228,6 +284,16 @@ export default function Friends() {
                     </div>
                 </div>
             </div>
+
+            {user && (
+                <PendingFriendModal
+                    isOpen={isPendingModalOpen}
+                    onClose={() => setIsPendingModalOpen(false)}
+                    pending={pending}
+                    currentUserId={user.userId}
+                    onAcceptSuccess={handleAcceptSuccess}
+                />
+            )}
         </div>
     );
 }

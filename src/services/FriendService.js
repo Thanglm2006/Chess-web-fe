@@ -19,5 +19,9 @@ export const FriendService = {
     acceptRequest: async (user1, user2) => {
         const response = await api.post(`/api/friends/accept?user1=${user1}&user2=${user2}`);
         return response.data;
-    }
+    },
+    removeFriend: async (user1, user2) => {
+        const response = await api.post(`/api/friends/remove?user1=${user1}&user2=${user2}`);
+        return response.data;
+    },
 };
