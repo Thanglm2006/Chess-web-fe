@@ -28,12 +28,21 @@ export class SocketService {
             return;
         }
 
-        const protocol =
-            window.location.protocol === "https:" ? "wss:" : "ws:";
+        let wsHost = window.location.host;
+        let wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
-        const wsUrl =
-            `${protocol}//${window.location.host}/ws?token=${token}`;
+        try {
+            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+            if (apiBaseUrl) {
+                const url = new URL(apiBaseUrl);
+                wsHost = url.host;
+                wsProtocol = url.protocol === "https:" ? "wss:" : "ws:";
+            }
+        } catch (e) {
+            console.error("Failed to parse dynamic WS host", e);
+        }
 
+        const wsUrl = `${wsProtocol}//${wsHost}/ws?token=${token}`;
         this.socket = new WebSocket(wsUrl);
 
         this.socket.onopen = () => {

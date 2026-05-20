@@ -1,25 +1,24 @@
 import React, { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { AiGameService } from '../services/AiGameService';
 import '../index.css';
 
 function App() {
-  const [mode, setMode] = useState('human-white');
-  const [status, setStatus] = useState('Initializing...');
-  const [depth, setDepth] = useState('-');
-  const [topLines, setTopLines] = useState([]);
-  const [evalValue, setEvalValue] = useState(0);
-  const [simulations, setSimulations] = useState(800);
-  const [temperature, setTemperature] = useState(0.3);
+  const navigate = useNavigate();
+  const [mode, setMode] = useState('human-white'); // 'human-white' or 'human-black'
+  const [status, setStatus] = useState('Select your settings and click Start Game');
+  const [difficulty, setDifficulty] = useState(3); // 1 = Easy, 2 = Medium, 3 = Hard, 4 = Expert
+  const [gameId, setGameId] = useState(null);
   
   const [models, setModels] = useState([]);
-  const [whiteModel, setWhiteModel] = useState('');
-  const [blackModel, setBlackModel] = useState('');
+  const [selectedModel, setSelectedModel] = useState('best_model');
+  const [gameHistory, setGameHistory] = useState([]);
   
   const isWait = useRef(false);
-  const currentLoopId = useRef(0);
   const gameRef = useRef(null);
   const boardRef = useRef(null);
   const modeRef = useRef('human-white');
+  const gameIdRef = useRef(null);
 
   // Keep references fresh for vanilla JS callbacks
   useEffect(() => {
@@ -27,9 +26,13 @@ function App() {
   }, [mode]);
 
   useEffect(() => {
-    // Initialize vanilla objects
+    gameIdRef.current = gameId;
+  }, [gameId]);
+
+  useEffect(() => {
+    // Initialize vanilla chess/chessboard objects
     if (!window.Chess || !window.Chessboard) {
-      setStatus('waiting for scripts to load...');
+      setStatus('Waiting for chess engine scripts to load...');
       return;
     }
 
@@ -38,15 +41,17 @@ function App() {
     const onDragStart = (source, piece, position, orientation) => {
       if (isWait.current) return false;
       if (gameRef.current.game_over()) return false;
+      if (!gameIdRef.current) return false; // Game must be started on backend
 
-      if ((gameRef.current.turn() === 'w' && piece.search(/^b/) !== -1) ||
-          (gameRef.current.turn() === 'b' && piece.search(/^w/) !== -1)) {
-          return false;
-      }
+      // Ensure player can only move their own color pieces
+      if (modeRef.current === 'human-white' && piece.search(/^b/) !== -1) return false;
+      if (modeRef.current === 'human-black' && piece.search(/^w/) !== -1) return false;
+      
+      // Ensure player only moves when it is their turn
+      const turn = gameRef.current.turn(); // 'w' or 'b'
+      if (modeRef.current === 'human-white' && turn === 'b') return false;
+      if (modeRef.current === 'human-black' && turn === 'w') return false;
 
-      if (modeRef.current === 'ai-ai') return false;
-      if (modeRef.current === 'human-white' && gameRef.current.turn() === 'b') return false;
-      if (modeRef.current === 'human-black' && gameRef.current.turn() === 'w') return false;
       return true;
     };
 
@@ -59,30 +64,32 @@ function App() {
 
       if (move === null) return 'snapback';
 
+      // Undo local move since we will fetch the server's authoritative board position
+      gameRef.current.undo();
+
       isWait.current = true;
-      setStatus('Sending move...');
+      setStatus('AI is calculating its response...');
 
       try {
-          const res = await axios.post('/api/move', { move: move.san });
-          const state = res.data;
-
-          const over = checkGameStatus(state);
-          if (!over) {
-              if (modeRef.current === 'human-white' || modeRef.current === 'human-black') {
-                  setTimeout(() => triggerAIMove(currentLoopId.current), 200);
-              } else {
-                  isWait.current = false;
-              }
-          }
+          const state = await AiGameService.makeMove(gameIdRef.current, move.san);
+          
+          // Apply server's new state (contains both player's move and AI's counter-move)
+          updateGameStatus(state);
       } catch (e) {
           console.error(e);
-          gameRef.current.undo();
+          setStatus(e.response?.data?.message || 'Move rejected or AI service offline.');
+          isWait.current = false;
+          
+          // Trigger board redraw to reset incorrect move
+          if (boardRef.current && gameRef.current) {
+            boardRef.current.position(gameRef.current.fen());
+          }
           return 'snapback';
       }
     };
 
     const onSnapEnd = () => {
-      if(boardRef.current && gameRef.current) {
+      if (boardRef.current && gameRef.current) {
         boardRef.current.position(gameRef.current.fen());
       }
     };
@@ -96,249 +103,296 @@ function App() {
       pieceTheme: '/chessPieces/{piece}.png'
     };
 
-    // Need a tiny delay to ensure the #board div is fully rendered by React
+    // Tiny delay to ensure board container is loaded in DOM
     setTimeout(() => {
       if (document.getElementById('board')) {
         boardRef.current = window.Chessboard('board', config);
+        
+        // Auto-check and resume active game if any exists
+        resumeActiveGame();
       }
-    }, 100);
+    }, 150);
 
-    // Initial API fetches
+    // Fetch available checkpoints
     loadModels();
-    resetGameBackend();
     
   }, []);
 
   const loadModels = async () => {
     try {
-      const res = await axios.get('/api/models');
-      setModels(res.data);
+      const data = await AiGameService.getModels();
+      const modelList = Array.isArray(data) ? data : (data.models || []);
+      setModels(modelList);
+      
+      const defaultKey = data.default || (modelList[0]?.key || 'best_model');
+      setSelectedModel(defaultKey);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load AI checkpoints', e);
     }
   };
 
-  const resetGameBackend = async () => {
+  const resumeActiveGame = async () => {
     try {
-      const res = await axios.post('/api/reset');
-      checkGameStatus(res.data);
-      if (modeRef.current === 'human-white') setStatus('Your Turn');
-    } catch(e) {
-      console.error(e);
+      const active = await AiGameService.getActiveGame();
+      if (active) {
+        setGameId(active.gameId);
+        const playerCol = active.playerColor; // "WHITE" or "BLACK"
+        setMode(playerCol === 'WHITE' ? 'human-white' : 'human-black');
+        setDifficulty(active.difficulty);
+        setSelectedModel(active.aiModel);
+        setGameHistory(active.history || []);
+
+        if (gameRef.current && boardRef.current) {
+          gameRef.current.load(active.fen);
+          boardRef.current.position(active.fen);
+          boardRef.current.orientation(playerCol.toLowerCase());
+        }
+        
+        setStatus('Resumed active game! Your turn.');
+        isWait.current = false;
+      }
+    } catch (e) {
+      console.error('Error checking active game session:', e);
     }
   };
 
-  const checkGameStatus = (stateData) => {
-    if (!gameRef.current || !boardRef.current) return false;
+  const updateGameStatus = (stateData) => {
+    if (!gameRef.current || !boardRef.current) return;
     
+    // Load FEN state from backend
     gameRef.current.load(stateData.fen);
     boardRef.current.position(stateData.fen);
-    setEvalValue(stateData.value);
 
-    if (stateData.mcts_stats) {
-      setDepth(stateData.depth || '-');
-      if (stateData.mcts_stats.length > 0) {
-        setTopLines(stateData.mcts_stats);
-      } else {
-        setTopLines([]);
-      }
-    }
-
-    if (stateData.game_over || gameRef.current.game_over()) {
-      setStatus(`Game Over`);
+    if (stateData.isGameOver || stateData.is_game_over) {
+      const resultText = stateData.result ? ` [Result: ${stateData.result}]` : '';
+      setStatus(`Game Over! ${stateData.termination || 'Match complete.'}${resultText}`);
+      setGameId(null);
       isWait.current = true;
-      return true;
+    } else {
+      setStatus('Your Turn');
+      isWait.current = false;
     }
-    return false;
+
+    // Refresh history
+    fetchHistoryDetails(stateData.gameId);
   };
 
-  const getPercentage = () => {
-    return Math.max(0, Math.min(100, ((evalValue + 1) / 2) * 100));
-  };
-
-  const getEvalText = () => {
-    const cp = evalValue * 100;
-    return `${cp > 0 ? "+" : ""}${cp.toFixed(1)}`;
-  };
-
-  const triggerAIMove = async (loopId) => {
-    if (loopId !== currentLoopId.current) return;
-
-    isWait.current = true;
-    setStatus('AI Thinking...');
-
+  const fetchHistoryDetails = async (gId) => {
+    if (!gId) return;
     try {
-      const res = await axios.post('/api/ai_move', {
-          simulations: simulations,
-          temperature: temperature,
-          white_model: whiteModel,
-          black_model: blackModel
-      });
-      const state = res.data;
-      const over = checkGameStatus(state);
-
-      if (!over) {
-          setStatus('Your Turn');
-          isWait.current = false;
-
-          if (modeRef.current === 'ai-ai') {
-              setTimeout(() => triggerAIMove(currentLoopId.current), 500);
-          }
+      const details = await AiGameService.getGameDetails(gId);
+      if (details && details.history) {
+        setGameHistory(details.history);
       }
     } catch (e) {
       console.error(e);
-      setStatus('Error connecting to backend');
-      isWait.current = false;
     }
   };
 
   const handleStartFreshGame = async () => {
     isWait.current = true;
-    currentLoopId.current++; // Invalidates old loops
-    setStatus('Resetting Board...');
+    setStatus('Initializing board and contacting AI backend...');
+
+    const playerColor = mode === 'human-white' ? 'WHITE' : 'BLACK';
 
     try {
-      const res = await axios.post('/api/reset');
-      const state = res.data;
+      const state = await AiGameService.startGame(selectedModel, difficulty, playerColor);
       
-      gameRef.current.reset();
-      boardRef.current.position(state.fen);
-      setEvalValue(state.value);
-      setTopLines([]);
-      setDepth(1);
+      setGameId(state.gameId);
+      setGameHistory([]);
 
-      if (mode === 'human-black') {
-          boardRef.current.orientation('black');
-          triggerAIMove(currentLoopId.current);
-      } else if (mode === 'ai-ai') {
-          boardRef.current.orientation('white');
-          triggerAIMove(currentLoopId.current);
+      if (gameRef.current && boardRef.current) {
+        gameRef.current.reset();
+        gameRef.current.load(state.fen);
+        boardRef.current.position(state.fen);
+        boardRef.current.orientation(playerColor.toLowerCase());
+      }
+
+      if (state.isGameOver) {
+        setStatus(`Game ended quickly. Result: ${state.result}`);
+        setGameId(null);
+        isWait.current = true;
       } else {
-          boardRef.current.orientation('white');
-          setStatus('Your Turn');
-          isWait.current = false;
+        if (playerColor === 'BLACK' && state.aiFirstMove) {
+          setStatus(`AI opened with ${state.aiFirstMove}. Your turn!`);
+          setGameHistory([state.aiFirstMove]);
+        } else {
+          setStatus('Game started! Your turn.');
+        }
+        isWait.current = false;
       }
     } catch (e) {
       console.error(e);
+      setStatus('Failed to start AI game. Ensure your backend is running.');
+      isWait.current = false;
+    }
+  };
+
+  const handleResign = async () => {
+    if (!gameId) return;
+    if (window.confirm('Are you sure you want to resign this game?')) {
+      try {
+        const res = await AiGameService.resignGame(gameId);
+        setStatus(`You resigned. Result: ${res.result} (AI wins)`);
+        setGameId(null);
+        isWait.current = true;
+      } catch (e) {
+        console.error(e);
+        setStatus('Failed to resign game.');
+      }
     }
   };
 
   return (
     <div className="container">
-        <header>
-            <h1>AlphaOne <span>Engine</span></h1>
-            <p>Dual Head ResNet + MCTS via PyTorch</p>
-        </header>
+      <header>
+        <h1>Play <span>with AI</span></h1>
+      </header>
 
-        <div className="main-layout">
-            <div className="board-column">
-                <div className="eval-wrapper">
-                    <div className="eval-bar" id="evalBar">
-                        <div 
-                          className="eval-fill" 
-                          id="evalFill" 
-                          style={{ height: `${getPercentage()}%` }}
-                        ></div>
-                    </div>
-                    <div className="eval-text" id="evalText">{getEvalText()}</div>
-                </div>
-                {/* The board target for vanilla chessboardjs */}
-                <div id="board" style={{ width: '500px' }}></div>
+      <div className="main-layout" style={{ justifyContent: 'center' }}>
+        {/* Board Column */}
+        <div className="board-column" style={{ position: 'relative' }}>
+          {/* Top Player (AI Player Metadata) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', padding: '0 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent-blue)' }}>
+                AI Checkpoint: {selectedModel} (Diff: {difficulty})
+              </div>
             </div>
+          </div>
 
-            <div className="dashboard-column">
-                <div className="glass-panel">
-                    <h2>Game Controls</h2>
-                    
-                    <div className="control-group">
-                        <label>Mode</label>
-                        <select value={mode} onChange={e => setMode(e.target.value)}>
-                            <option value="human-white">Human (White) vs AI</option>
-                            <option value="human-black">AI vs Human (Black)</option>
-                            <option value="ai-ai">AI vs AI</option>
-                        </select>
-                    </div>
+          <div id="board" style={{ width: '600px' }}></div>
 
-                    <div className="control-grid">
-                        <div className="control-group">
-                            <label>White Model</label>
-                            <select value={whiteModel} onChange={e => setWhiteModel(e.target.value)}>
-                                <option value="">Default (Latest)</option>
-                                {models.map(m => (
-                                  <option key={`white-${m.path}`} value={m.path}>{m.stage}: {m.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="control-group">
-                            <label>Black Model</label>
-                            <select value={blackModel} onChange={e => setBlackModel(e.target.value)}>
-                                <option value="">Default (Latest)</option>
-                                {models.map(m => (
-                                  <option key={`black-${m.path}`} value={m.path}>{m.stage}: {m.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="control-group">
-                        <label>Simulations (GPUs): <span>{simulations}</span></label>
-                        <input 
-                          type="range" 
-                          min="10" 
-                          max="2000" 
-                          step="10" 
-                          value={simulations} 
-                          onChange={e => setSimulations(e.target.value)} 
-                        />
-                    </div>
-
-                    <div className="control-group">
-                        <label>Temperature (&tau;): <span>{temperature}</span></label>
-                        <input 
-                          type="range" 
-                          min="0.0" 
-                          max="1.5" 
-                          step="0.1" 
-                          value={temperature} 
-                          onChange={e => setTemperature(e.target.value)} 
-                        />
-                    </div>
-
-                    <div className="btn-group">
-                        <button onClick={handleStartFreshGame} className="primary-btn">Start Game</button>
-                        <button onClick={() => triggerAIMove(currentLoopId.current)} className="secondary-btn">Force AI Move</button>
-                    </div>
-                </div>
-
-                <div className="glass-panel mcts-panel">
-                    <h2>MCTS Dashboard</h2>
-                    <div className="stats-grid">
-                        <div className="stat-box">
-                            <span>Status</span>
-                            <strong>{status}</strong>
-                        </div>
-                        <div className="stat-box">
-                            <span>Depth</span>
-                            <strong>{depth}</strong>
-                        </div>
-                    </div>
-                    
-                    <h3>Top Lines</h3>
-                    <ul className="top-lines">
-                        {topLines.length > 0 ? (
-                            topLines.map((stat, idx) => (
-                                <li key={idx}>
-                                    <span>{stat.move}</span> 
-                                    <span className="stats">N: {stat.N} | P: {stat.P}%</span>
-                                </li>
-                            ))
-                        ) : (
-                            <li><span>-</span> <span className="stats">N: 0 | P: 0%</span></li>
-                        )}
-                    </ul>
-                </div>
+          {/* Bottom Player (Human Player Metadata) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '0 10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#4ade80' }}>You</div>
             </div>
+          </div>
         </div>
+
+        {/* Dashboard Column */}
+        <div className="dashboard-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Match Settings Panel / Game State Info */}
+          <div className="glass-panel" style={{ minWidth: '320px' }}>
+            <h2>Match Settings</h2>
+            
+            {!gameId ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
+                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Side Selection</span>
+                  <select 
+                    value={mode} 
+                    onChange={e => setMode(e.target.value)}
+                    className="custom-input"
+                    style={{ width: '100%', padding: '8px' }}
+                  >
+                    <option value="human-white">Play as White (AI plays Black)</option>
+                    <option value="human-black">Play as Black (AI plays White)</option>
+                  </select>
+                </div>
+
+                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
+                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Neural Checkpoint</span>
+                  <select 
+                    value={selectedModel} 
+                    onChange={e => setSelectedModel(e.target.value)}
+                    className="custom-input"
+                    style={{ width: '100%', padding: '8px' }}
+                  >
+                    <option value="best_model">Default Best Model</option>
+                    {models.map(m => (
+                      <option key={`model-${m.key}`} value={m.key}>
+                        {m.display || m.key}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
+                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>AI Difficulty</span>
+                  <select 
+                    value={difficulty} 
+                    onChange={e => setDifficulty(Number(e.target.value))}
+                    className="custom-input"
+                    style={{ width: '100%', padding: '8px' }}
+                  >
+                    <option value={1}>Easy (Fast/Intuitive)</option>
+                    <option value={2}>Medium (Positional)</option>
+                    <option value={3}>Hard (ResNet Tactical)</option>
+                    <option value={4}>Expert (Deep MCTS Search)</option>
+                  </select>
+                </div>
+
+                <button onClick={handleStartFreshGame} className="primary-btn" style={{ padding: '12px', marginTop: '10px' }}>
+                  Start Match
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="stat-box">
+                  <span>Engine Checkpoint</span>
+                  <strong>{selectedModel}</strong>
+                </div>
+                <div className="stat-box">
+                  <span>Difficulty Level</span>
+                  <strong>{difficulty === 1 ? 'Easy' : difficulty === 2 ? 'Medium' : difficulty === 3 ? 'Hard' : 'Expert'}</strong>
+                </div>
+                <div className="stat-box">
+                  <span>Match Status</span>
+                  <strong style={{ color: isWait.current ? '#f87171' : '#4ade80' }}>
+                    {isWait.current ? "AI THINKING..." : "YOUR TURN"}
+                  </strong>
+                </div>
+                <button onClick={handleResign} className="secondary-btn" style={{ color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)', padding: '12px' }}>
+                  Resign Match
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Status Info Box */}
+          <div className="glass-panel" style={{ padding: '15px' }}>
+            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>Engine Output / Logs</span>
+            <strong style={{ fontSize: '1rem', color: '#4ade80' }}>{status}</strong>
+          </div>
+
+          {/* Move History Panel */}
+          <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
+            <h3>Move History</h3>
+            <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '10px', overflowY: 'auto', maxHeight: '180px' }}>
+              {gameHistory.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: '5px', fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                  {Array.from({ length: Math.ceil(gameHistory.length / 2) }).map((_, idx) => (
+                    <React.Fragment key={idx}>
+                      <div style={{ color: 'var(--text-muted)' }}>
+                        {idx + 1}. <span style={{ color: 'white', fontWeight: 'bold' }}>{gameHistory[idx * 2]}</span>
+                      </div>
+                      <div>
+                        {gameHistory[idx * 2 + 1] ? (
+                          <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{gameHistory[idx * 2 + 1]}</span>
+                        ) : (
+                          '-'
+                        )}
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>No moves played yet.</span>
+              )}
+            </div>
+          </div>
+
+          {/* Back to main menu */}
+          {!gameId && (
+            <button onClick={() => navigate('/menu')} className="secondary-btn" style={{ color: '#f87171', border: 'none', cursor: 'pointer', padding: '10px', fontWeight: 'bold' }}>
+              ← Back to Menu
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const api = axios.create();
+const api = axios.create({
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+    withCredentials: true
+});
 
 // Request Interceptor: Attach Token
 api.interceptors.request.use((config) => {
@@ -25,7 +28,7 @@ api.interceptors.response.use(
             
             try {
                 // Important: withCredentials true is needed to send the HttpOnly refreshToken cookie
-                const refreshResponse = await axios.post('/api/auth/refresh', {}, {
+                const refreshResponse = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/refresh`, {}, {
                     withCredentials: true 
                 });
                 
@@ -48,3 +51,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+

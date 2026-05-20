@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { socketClient } from '../services/SocketService';
 import { AuthService } from '../services/AuthService';
@@ -147,7 +147,7 @@ export default function OnlinePlay() {
         try {
             const token = await AuthService.getValidToken();
             const userData = AuthService.parseToken(token);
-            await axios.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
+            await api.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
         } catch (err) {
             setStatus('Matchmaking Error: ' + err.message);
         }
@@ -541,7 +541,7 @@ export default function OnlinePlay() {
                                 </div>
                             </div>
 
-                            <div id="board" style={{ width: '500px' }}></div>
+                            <div id="board" style={{ width: '600px' }}></div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '0 10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

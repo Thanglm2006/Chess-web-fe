@@ -1,4 +1,5 @@
 import axios from 'axios';
+import api from './api';
 
 const BASE_URL = '/api/auth';
 
@@ -11,7 +12,7 @@ export const AuthService = {
         return payload.exp < now;
     },
     refreshToken: async () => {
-        const response = await axios.post(`${BASE_URL}/refresh`, {}, {
+        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${BASE_URL}/refresh`, {}, {
             withCredentials: true
         });
         return response.data;
@@ -38,9 +39,8 @@ export const AuthService = {
     },
     
 
-
     login: async (email, password) => {
-        const response = await axios.post(`${BASE_URL}/login`, { email, password }, {
+        const response = await api.post(`${BASE_URL}/login`, { email, password }, {
             withCredentials: true
         });
 
@@ -52,19 +52,19 @@ export const AuthService = {
 
     
     register: async (username, email, password, confirmPassword, countryCode) => {
-        const response = await axios.post(`${BASE_URL}/register`, {
+        const response = await api.post(`${BASE_URL}/register`, {
             username, email, password, confirmPassword, countryCode
         });
         return response.data;
     },
 
     verifyOTP: async (email, otp) => {
-        const response = await axios.post(`${BASE_URL}/verify-otp`, { email, otp });
+        const response = await api.post(`${BASE_URL}/verify-otp`, { email, otp });
         return response.data;
     },
 
     googleLogin: async (idToken) => {
-        const response = await axios.post(`${BASE_URL}/google`, 
+        const response = await api.post(`${BASE_URL}/google`, 
             { idToken }, 
             { withCredentials: true }
         );
@@ -88,3 +88,4 @@ export const AuthService = {
     // In React this is better managed with @react-oauth/google if needed.
     // getGoogleClientId: () => import.meta.env.VITE_GOOGLE_CLIENT_ID
 };
+
