@@ -64,11 +64,19 @@ function App() {
 
       if (move === null) return 'snapback';
 
-      // Undo local move since we will fetch the server's authoritative board position
-      gameRef.current.undo();
-
       isWait.current = true;
       setStatus('AI is calculating its response...');
+
+      // Update history immediately for instant responsive feedback
+      const prevHistory = [...gameHistory];
+      if (move.san) {
+        setGameHistory(prev => [...prev, move.san]);
+      }
+
+      // Redraw board immediately to show user's move
+      if (boardRef.current) {
+        boardRef.current.position(gameRef.current.fen());
+      }
 
       try {
           const state = await AiGameService.makeMove(gameIdRef.current, move.san);
@@ -79,6 +87,10 @@ function App() {
           console.error(e);
           setStatus(e.response?.data?.message || 'Move rejected or AI service offline.');
           isWait.current = false;
+          
+          // Roll back local move on failure
+          gameRef.current.undo();
+          setGameHistory(prevHistory);
           
           // Trigger board redraw to reset incorrect move
           if (boardRef.current && gameRef.current) {
