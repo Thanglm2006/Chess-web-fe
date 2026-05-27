@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { GameService } from '../services/GameService';
 import { FriendService } from '../services/FriendService';
+import { AiGameService } from '../services/AiGameService';
 import { socketClient } from '../services/SocketService';
 import api from '../services/api';
 import '../index.css';
@@ -15,6 +16,13 @@ export default function MainMenu() {
     const [username, setUsername] = useState('Guest');
     const [friends, setFriends] = useState([]);
     const [matchType, setMatchType] = useState('rapid');
+
+    // AI Play Lobby Modal States
+    const [isAiLobbyOpen, setIsAiLobbyOpen] = useState(false);
+    const [aiMode, setAiMode] = useState('human-white'); // 'human-white' or 'human-black'
+    const [aiDifficulty, setAiDifficulty] = useState(3); // 1 = Easy, 2 = Medium, 3 = Hard, 4 = Expert
+    const [aiModels, setAiModels] = useState([]);
+    const [selectedAiModel, setSelectedAiModel] = useState('best_model');
 
     // Online Play Lobby Modal States
     const [isLobbyOpen, setIsLobbyOpen] = useState(false);
@@ -36,11 +44,13 @@ export default function MainMenu() {
         gameIdRef.current = gameId;
     }, [gameId]);
 
-    // Handle check for openLobby from redirect
+    // Handle check for openLobby or openAiLobby from redirect
     useEffect(() => {
         if (location.state?.openLobby) {
             setIsLobbyOpen(true);
-            // Clear state to avoid reopening on subsequent navigation
+            navigate(location.pathname, { replace: true, state: {} });
+        } else if (location.state?.openAiLobby) {
+            setIsAiLobbyOpen(true);
             navigate(location.pathname, { replace: true, state: {} });
         }
     }, [location, navigate]);
@@ -75,6 +85,17 @@ export default function MainMenu() {
                 }
             } catch (error) {
                 console.error("Reconnection check failed", error);
+            }
+
+            // Fetch AI Checkpoints/Models
+            try {
+                const data = await AiGameService.getModels();
+                const modelList = Array.isArray(data) ? data : (data.models || []);
+                setAiModels(modelList);
+                const defaultKey = data.default || (modelList[0]?.key || 'best_model');
+                setSelectedAiModel(defaultKey);
+            } catch (e) {
+                console.error('Failed to load AI checkpoints in MainMenu', e);
             }
 
             // Render background board
@@ -205,6 +226,17 @@ export default function MainMenu() {
         }
     };
 
+    const handleStartAiGame = async () => {
+        const playerColor = aiMode === 'human-white' ? 'WHITE' : 'BLACK';
+        try {
+            await AiGameService.startGame(selectedAiModel, aiDifficulty, playerColor);
+            setIsAiLobbyOpen(false);
+            navigate('/play-ai');
+        } catch (e) {
+            alert('Không thể bắt đầu trận đấu với AI. Hãy chắc chắn rằng máy chủ AI đang chạy.');
+        }
+    };
+
     const handleCreateRoom = () => {
         setStatus('Creating private room...');
         socketClient.send({ type: 'CREATE_ROOM', matchType: matchType });
@@ -276,7 +308,7 @@ export default function MainMenu() {
                             </div>
                         </button>
 
-                        <button onClick={() => navigate('/play-ai')} className="action-btn secondary-action">
+                        <button onClick={() => setIsAiLobbyOpen(true)} className="action-btn secondary-action">
                             <span className="btn-icon">🤖</span>
                             <div className="btn-text">
                                 <strong>Chơi với Bot</strong>
@@ -500,6 +532,100 @@ export default function MainMenu() {
                             </div>
                         )}
 
+                    </div>
+                </div>
+            )}
+
+            {/* AI Lobby Modal Overlay */}
+            {isAiLobbyOpen && (
+                <div className="lobby-modal-overlay">
+                    <div className="lobby-modal-card" style={{ maxWidth: '520px' }}>
+                        <div className="lobby-modal-content" style={{ padding: '30px 20px' }}>
+                            <div className="lobby-modal-header" style={{ textAlign: 'center', marginBottom: '25px' }}>
+                                <h2 style={{ fontSize: '1.8rem', color: 'white', fontWeight: 'bold' }}>🤖 Chơi với máy AI</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '5px' }}>
+                                    Thách đấu hệ thống mạng nơ-ron nhân tạo AlphaOne
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+                                {/* Side Selection */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Chọn quân cờ</span>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAiMode('human-white')}
+                                            className={aiMode === 'human-white' ? "lobby-primary-btn" : "lobby-secondary-btn"}
+                                            style={{ flex: 1, padding: '12px', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', border: aiMode === 'human-white' ? 'none' : '1px solid var(--glass-border)' }}
+                                        >
+                                            ⚪ Trắng đi trước
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAiMode('human-black')}
+                                            className={aiMode === 'human-black' ? "lobby-primary-btn" : "lobby-secondary-btn"}
+                                            style={{ flex: 1, padding: '12px', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', border: aiMode === 'human-black' ? 'none' : '1px solid var(--glass-border)' }}
+                                        >
+                                            ⚫ Đen đi sau
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* AI Model Checkpoint */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Mô hình nơ-ron AI</span>
+                                    <select
+                                        value={selectedAiModel}
+                                        onChange={e => setSelectedAiModel(e.target.value)}
+                                        className="custom-input"
+                                        style={{ width: '100%', padding: '12px', fontSize: '0.95rem', borderRadius: '10px', background: 'rgba(0, 0, 0, 0.4)', color: 'white', border: '1px solid var(--glass-border)' }}
+                                    >
+                                        <option value="best_model">Mặc định (Khuyên dùng)</option>
+                                        {aiModels.map(m => (
+                                            <option key={`model-${m.key}`} value={m.key}>
+                                                {m.display || m.key}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* AI Difficulty */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Độ khó máy</span>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {[
+                                            { value: 1, label: 'Dễ (Level 1)' },
+                                            { value: 2, label: 'Thường (Level 2)' },
+                                            { value: 3, label: 'Khó (Level 3)' },
+                                            { value: 4, label: 'Bậc thầy (Level 4)' }
+                                        ].map(diffItem => (
+                                            <button
+                                                key={diffItem.value}
+                                                type="button"
+                                                onClick={() => setAiDifficulty(diffItem.value)}
+                                                className={aiDifficulty === diffItem.value ? "lobby-primary-btn" : "lobby-secondary-btn"}
+                                                style={{ padding: '12px', fontSize: '0.85rem', border: aiDifficulty === diffItem.value ? 'none' : '1px solid var(--glass-border)' }}
+                                            >
+                                                {diffItem.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleStartAiGame}
+                                    className="lobby-primary-btn"
+                                    style={{ padding: '15px', marginTop: '15px', fontSize: '1rem', width: '100%', fontWeight: 'bold', letterSpacing: '0.5px', background: 'linear-gradient(135deg, var(--accent-blue), #3b82f6)' }}
+                                >
+                                    Bắt đầu trận đấu 🏁
+                                </button>
+
+                                <button onClick={() => setIsAiLobbyOpen(false)} className="lobby-back-btn" style={{ marginTop: '10px' }}>
+                                    ← Quay lại Menu chính
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
