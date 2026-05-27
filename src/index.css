@@ -17,15 +17,26 @@
     box-sizing: border-box;
 }
 
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-primary);
+}
+
+#root {
     min-height: 100vh;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-x: hidden;
 }
 
 /* Dynamic background mesh gradient */
@@ -278,11 +289,12 @@ button {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    right: 0;
+    bottom: 0;
     background-color: var(--bg-dark);
     display: flex;
     z-index: 10;
+    overflow: hidden;
 }
 
 /* Sidebar */
@@ -463,11 +475,13 @@ button {
 /* Right Panel */
 .right-panel {
     width: 380px;
+    height: 100%;
     padding: 20px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     background: var(--bg-dark);
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 .menu-glass-panel {
@@ -1474,3 +1488,38 @@ button {
     border-radius: 50%;
     animation: lobbySpin 0.8s linear infinite;
 }
+
+/* Legal move highlights and selected square styles */
+.highlight-square {
+    background-image: radial-gradient(circle, rgba(129, 182, 76, 0.5) 20%, transparent 20%) !important;
+}
+
+.highlight-square-selected {
+    background-color: rgba(247, 247, 105, 0.5) !important; /* Elegant Chess.com yellow highlight */
+    box-shadow: inset 0 0 0 3px rgba(129, 182, 76, 0.8) !important;
+}
+
+/* Fix browser native drag & select conflicts with Chessboard.js pieces during interaction */
+.piece-417db {
+    max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    -webkit-user-drag: none !important;
+    user-drag: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+
+/* Force Chessboard.js absolute dragging container to be fully visible and on top */
+div[class^="chessboard-"],
+div[class*=" chessboard-"] {
+    z-index: 999999 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+

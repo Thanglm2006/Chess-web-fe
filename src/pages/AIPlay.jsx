@@ -23,6 +23,7 @@ function AIPlay() {
   const boardRef = useRef(null);
   const modeRef = useRef('human-white');
   const gameIdRef = useRef(null);
+  const selectedSquareRef = useRef(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -69,6 +70,88 @@ function AIPlay() {
       gameRef.current = new window.Chess();
     }
 
+    const clearHighlights = () => {
+      document.querySelectorAll('#board .highlight-square').forEach(el => {
+        el.classList.remove('highlight-square');
+      });
+      document.querySelectorAll('#board .highlight-square-selected').forEach(el => {
+        el.classList.remove('highlight-square-selected');
+      });
+    };
+
+    const handleBoardClick = async (event) => {
+      if (isGameOver || isWait.current) return;
+      if (!gameRef.current || !boardRef.current) return;
+
+      const clickedSquareEl = event.target.closest('[data-square]');
+      if (!clickedSquareEl) return;
+
+      const square = clickedSquareEl.getAttribute('data-square');
+
+      // Check turn
+      const turn = gameRef.current.turn(); // 'w' or 'b'
+      const playerChar = modeRef.current === 'human-white' ? 'w' : 'b';
+      if (turn !== playerChar) return;
+
+      const piece = gameRef.current.get(square);
+
+      // If clicked own piece, select it and highlight legal moves
+      if (piece && piece.color === playerChar) {
+        clearHighlights();
+        selectedSquareRef.current = square;
+
+        clickedSquareEl.classList.add('highlight-square-selected');
+
+        const moves = gameRef.current.moves({ square: square, verbose: true });
+        moves.forEach(m => {
+          const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+          if (destEl) {
+            destEl.classList.add('highlight-square');
+          }
+        });
+      } else if (selectedSquareRef.current) {
+        // Try to move
+        const source = selectedSquareRef.current;
+        let move = gameRef.current.move({
+          from: source,
+          to: square,
+          promotion: 'q'
+        });
+
+        clearHighlights();
+        selectedSquareRef.current = null;
+
+        if (move !== null) {
+          // Redraw board instantly
+          boardRef.current.position(gameRef.current.fen());
+
+          isWait.current = true;
+          setStatus('AI is calculating its response...');
+
+          const prevHistory = [...gameHistory];
+          if (move.san) {
+            setGameHistory(prev => [...prev, move.san]);
+          }
+
+          try {
+              const state = await AiGameService.makeMove(gameIdRef.current, move.san);
+              updateGameStatus(state);
+          } catch (e) {
+              console.error(e);
+              setStatus(e.response?.data?.message || 'Move rejected or AI service offline.');
+              isWait.current = false;
+              
+              gameRef.current.undo();
+              setGameHistory(prevHistory);
+              
+              if (boardRef.current && gameRef.current) {
+                boardRef.current.position(gameRef.current.fen());
+              }
+          }
+        }
+      }
+    };
+
     const onDragStart = (source, piece, position, orientation) => {
       if (isWait.current) return false;
       if (gameRef.current.game_over()) return false;
@@ -83,6 +166,23 @@ function AIPlay() {
       if (modeRef.current === 'human-white' && turn === 'b') return false;
       if (modeRef.current === 'human-black' && turn === 'w') return false;
 
+      // Select this square and show legal moves during drag
+      clearHighlights();
+      selectedSquareRef.current = source;
+
+      const sourceEl = document.querySelector(`#board [data-square="${source}"]`);
+      if (sourceEl) {
+        sourceEl.classList.add('highlight-square-selected');
+      }
+
+      const moves = gameRef.current.moves({ square: source, verbose: true });
+      moves.forEach(m => {
+        const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+        if (destEl) {
+          destEl.classList.add('highlight-square');
+        }
+      });
+
       return true;
     };
 
@@ -94,6 +194,10 @@ function AIPlay() {
       });
 
       if (move === null) return 'snapback';
+
+      // Clear highlights on drag drop
+      clearHighlights();
+      selectedSquareRef.current = null;
 
       isWait.current = true;
       setStatus('AI is calculating its response...');
@@ -145,6 +249,9 @@ function AIPlay() {
       onDragStart: onDragStart,
       onDrop: onDrop,
       onSnapEnd: onSnapEnd,
+      moveSpeed: 'fast',
+      snapbackSpeed: 150,
+      snapSpeed: 100,
       pieceTheme: '/chessPieces/{piece}.png'
     };
 
@@ -153,11 +260,22 @@ function AIPlay() {
       if (document.getElementById('board')) {
         clearInterval(checkBoardExist);
         boardRef.current = window.Chessboard('board', config);
+
+        // Bind custom board click event listener
+        const boardEl = document.getElementById('board');
+        if (boardEl) {
+          boardEl.removeEventListener('click', handleBoardClick);
+          boardEl.addEventListener('click', handleBoardClick);
+        }
       }
     }, 50);
 
     return () => {
       clearInterval(checkBoardExist);
+      const boardEl = document.getElementById('board');
+      if (boardEl) {
+        boardEl.removeEventListener('click', handleBoardClick);
+      }
     };
   }, [gameId]);
 

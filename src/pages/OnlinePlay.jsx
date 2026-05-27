@@ -66,6 +66,8 @@ export default function OnlinePlay() {
     const confirmTimer = useRef(null);
     const initTimer = useRef(null);
     const clockTimer = useRef(null);
+    const selectedSquareRef = useRef(null);
+    const boardClickHandlerRef = useRef(null);
 
     useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
     useEffect(() => { sideRef.current = side; }, [side]);
@@ -156,6 +158,11 @@ export default function OnlinePlay() {
             if (initTimer.current) clearTimeout(initTimer.current);
             if (clockTimer.current) clearInterval(clockTimer.current);
             hasStarted.current = false;
+
+            const boardEl = document.getElementById('board');
+            if (boardEl && boardClickHandlerRef.current) {
+                boardEl.removeEventListener('click', boardClickHandlerRef.current);
+            }
         };
     }, [location, navigate]);
 
@@ -400,6 +407,75 @@ export default function OnlinePlay() {
                 gameRef.current = new window.Chess(initialFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
                 setCurrentTurn(gameRef.current.turn());
 
+                const clearHighlights = () => {
+                    document.querySelectorAll('#board .highlight-square').forEach(el => {
+                        el.classList.remove('highlight-square');
+                    });
+                    document.querySelectorAll('#board .highlight-square-selected').forEach(el => {
+                        el.classList.remove('highlight-square-selected');
+                    });
+                };
+
+                const handleBoardClick = (event) => {
+                    if (matchStateRef.current !== MATCH_STATES.PLAYING) return;
+                    if (!gameRef.current || !boardRef.current) return;
+
+                    const clickedSquareEl = event.target.closest('[data-square]');
+                    if (!clickedSquareEl) return;
+
+                    const square = clickedSquareEl.getAttribute('data-square');
+
+                    // Check turn
+                    const turn = gameRef.current.turn(); // 'w' or 'b'
+                    const playerChar = playerSide.toLowerCase().startsWith('w') ? 'w' : 'b';
+                    if (turn !== playerChar) return;
+
+                    const piece = gameRef.current.get(square);
+
+                    // If clicked own piece, select it and highlight legal moves
+                    if (piece && piece.color === playerChar) {
+                        clearHighlights();
+                        selectedSquareRef.current = square;
+
+                        clickedSquareEl.classList.add('highlight-square-selected');
+
+                        const moves = gameRef.current.moves({ square: square, verbose: true });
+                        moves.forEach(m => {
+                            const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+                            if (destEl) {
+                                destEl.classList.add('highlight-square');
+                            }
+                        });
+                    } else if (selectedSquareRef.current) {
+                        // Try to move
+                        const source = selectedSquareRef.current;
+                        let move = gameRef.current.move({
+                            from: source,
+                            to: square,
+                            promotion: 'q'
+                        });
+
+                        clearHighlights();
+                        selectedSquareRef.current = null;
+
+                        if (move !== null) {
+                            // Redraw board instantly
+                            boardRef.current.position(gameRef.current.fen());
+                            
+                            setCurrentTurn(gameRef.current.turn());
+
+                            const promo = move.promotion ? move.promotion : '';
+                            const moveCoords = (move.from + move.to + promo).toUpperCase();
+
+                            socketClient.send({
+                                type: 'MOVE',
+                                gameId: activeGameId,
+                                move: moveCoords
+                            });
+                        }
+                    }
+                };
+
                 const onDragStart = (source, piece) => {
                     if (matchStateRef.current !== MATCH_STATES.PLAYING) return false;
 
@@ -410,12 +486,32 @@ export default function OnlinePlay() {
                     if ((playerChar === 'w' && piece.search(/^b/) !== -1) ||
                         (playerChar === 'b' && piece.search(/^w/) !== -1)) return false;
 
+                    // Select this square and show legal moves during drag
+                    clearHighlights();
+                    selectedSquareRef.current = source;
+
+                    const sourceEl = document.querySelector(`#board [data-square="${source}"]`);
+                    if (sourceEl) {
+                        sourceEl.classList.add('highlight-square-selected');
+                    }
+
+                    const moves = gameRef.current.moves({ square: source, verbose: true });
+                    moves.forEach(m => {
+                        const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+                        if (destEl) {
+                            destEl.classList.add('highlight-square');
+                        }
+                    });
+
                     return true;
                 };
 
                 const onDrop = (source, target) => {
                     let move = gameRef.current.move({ from: source, to: target, promotion: 'q' });
                     if (move === null) return 'snapback';
+
+                    clearHighlights();
+                    selectedSquareRef.current = null;
 
                     setCurrentTurn(gameRef.current.turn());
 
@@ -436,10 +532,22 @@ export default function OnlinePlay() {
                     onDragStart: onDragStart,
                     onDrop: onDrop,
                     onSnapEnd: () => boardRef.current.position(gameRef.current.fen()),
+                    moveSpeed: 'fast',
+                    snapbackSpeed: 150,
+                    snapSpeed: 100,
                     pieceTheme: '/chessPieces/{piece}.png'
                 };
 
                 boardRef.current = window.Chessboard('board', config);
+
+                // Register event listeners
+                if (boardEl) {
+                    if (boardClickHandlerRef.current) {
+                        boardEl.removeEventListener('click', boardClickHandlerRef.current);
+                    }
+                    boardClickHandlerRef.current = handleBoardClick;
+                    boardEl.addEventListener('click', handleBoardClick);
+                }
             }
         }, 50);
     };
