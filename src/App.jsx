@@ -7,6 +7,7 @@ import AIPlay from './pages/AIPlay';
 import OnlinePlay from './pages/OnlinePlay';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
+import ReplayPage from './pages/ReplayPage';
 import { AuthService } from './services/AuthService';
 import { useEffect, useState } from "react";
 import './index.css';
@@ -83,6 +84,14 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Profile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/replay"
+                        element={
+                            <PrivateRoute>
+                                <ReplayPage />
                             </PrivateRoute>
                         }
                     />
