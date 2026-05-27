@@ -1,18 +1,49 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { GameService } from '../services/GameService';
 import { FriendService } from '../services/FriendService';
 import { socketClient } from '../services/SocketService';
+import api from '../services/api';
 import '../index.css';
 import Sidebar from '../components/Sidebar';
 
 export default function MainMenu() {
     const navigate = useNavigate();
+    const location = useLocation();
     const boardRef = useRef(null);
     const [username, setUsername] = useState('Guest');
     const [friends, setFriends] = useState([]);
     const [matchType, setMatchType] = useState('rapid');
+
+    // Online Play Lobby Modal States
+    const [isLobbyOpen, setIsLobbyOpen] = useState(false);
+    const [matchState, setMatchState] = useState('INITIALIZING');
+    const [status, setStatus] = useState('Connected. Select a mode.');
+    const [gameId, setGameId] = useState(null);
+    const [opponent, setOpponent] = useState(null);
+    const [confirmCountdown, setConfirmCountdown] = useState(10);
+    const [hasAccepted, setHasAccepted] = useState(false);
+    
+    // Private Room State
+    const [roomCode, setRoomCode] = useState('');
+    const [joinRoomCode, setJoinRoomCode] = useState('');
+
+    const confirmTimer = useRef(null);
+    const gameIdRef = useRef(null);
+
+    useEffect(() => {
+        gameIdRef.current = gameId;
+    }, [gameId]);
+
+    // Handle check for openLobby from redirect
+    useEffect(() => {
+        if (location.state?.openLobby) {
+            setIsLobbyOpen(true);
+            // Clear state to avoid reopening on subsequent navigation
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location, navigate]);
 
     useEffect(() => {
         const init = async () => {
@@ -91,6 +122,120 @@ export default function MainMenu() {
         };
     }, [navigate]);
 
+    // Socket client message listener for the lobby modal
+    useEffect(() => {
+        const handleLobbySocketMessage = (data) => {
+            try {
+                const msg = JSON.parse(data);
+                console.log("Lobby Socket Message:", msg);
+                switch (msg.type) {
+                    case 'ROOM_CREATED':
+                        setRoomCode(msg.code);
+                        setStatus('Waiting for opponent to join room: ' + msg.code);
+                        setMatchState('SEARCHING');
+                        break;
+                    case 'PREPARE_GAME':
+                        setMatchState('FOUND');
+                        setGameId(msg.gameId);
+                        setOpponent({
+                            id: msg.opponentId,
+                            name: msg.opponentName,
+                            country: msg.opponentCountry || 'Earth',
+                            rating: msg.opponentRating || 1200
+                        });
+                        setHasAccepted(false);
+                        startConfirmCountdown(msg.timeout || 10);
+                        break;
+                    case 'MATCH_CANCELLED':
+                        if (confirmTimer.current) clearInterval(confirmTimer.current);
+                        setMatchState('INITIALIZING');
+                        setStatus(msg.reason || 'Match cancelled');
+                        break;
+                    case 'GAME_START':
+                        if (confirmTimer.current) clearInterval(confirmTimer.current);
+                        setIsLobbyOpen(false);
+                        // Reset modal state
+                        setMatchState('INITIALIZING');
+                        setStatus('Connected. Select a mode.');
+                        // Navigate to play-online with game details in state
+                        navigate('/play-online', { state: { gameStartMsg: msg } });
+                        break;
+                    default:
+                        break;
+                }
+            } catch (e) {
+                console.error("Lobby socket handling error", e);
+            }
+        };
+
+        if (isLobbyOpen) {
+            socketClient.addListener(handleLobbySocketMessage);
+        }
+        return () => {
+            socketClient.removeListener(handleLobbySocketMessage);
+            if (confirmTimer.current) clearInterval(confirmTimer.current);
+        };
+    }, [isLobbyOpen]);
+
+    const startConfirmCountdown = (t) => {
+        setConfirmCountdown(t);
+        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        confirmTimer.current = setInterval(() => {
+            setConfirmCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(confirmTimer.current);
+                    handleReject();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const joinMatchmaking = async () => {
+        setMatchState('SEARCHING');
+        setHasAccepted(false);
+        setStatus('Searching for opponent...');
+        try {
+            const token = await AuthService.getValidToken();
+            const userData = AuthService.parseToken(token);
+            await api.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
+        } catch (err) {
+            setStatus('Matchmaking Error: ' + err.message);
+        }
+    };
+
+    const handleCreateRoom = () => {
+        setStatus('Creating private room...');
+        socketClient.send({ type: 'CREATE_ROOM', matchType: matchType });
+    };
+
+    const handleJoinRoom = () => {
+        if (!joinRoomCode) return;
+        setStatus(`Joining room ${joinRoomCode}...`);
+        socketClient.send({ type: 'JOIN_ROOM', code: joinRoomCode });
+    };
+
+    const handleAccept = () => {
+        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        setHasAccepted(true);
+        socketClient.send({ type: 'READY', gameId: gameIdRef.current });
+    };
+
+    const handleReject = () => {
+        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        socketClient.send({ type: 'REJECT_MATCH', gameId: gameIdRef.current });
+        setMatchState('INITIALIZING');
+        setStatus('Connected. Select a mode.');
+    };
+
+    const cancelSearch = () => {
+        setMatchState('INITIALIZING');
+        setRoomCode('');
+        socketClient.send({ type: 'LEAVE_QUEUE' });
+        setStatus('Connected. Select a mode.');
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
         navigate('/login');
@@ -122,7 +267,7 @@ export default function MainMenu() {
                         <h2>🏆 So tài cờ vua</h2>
                     </div>
                     <div className="action-buttons">
-                        <button onClick={() => navigate('/play-online')} className="action-btn primary-action">
+                        <button onClick={() => setIsLobbyOpen(true)} className="action-btn primary-action">
                             <span className="btn-icon">⚡</span>
                             <div className="btn-text">
                                 <strong>Chơi trực tuyến</strong>
@@ -205,6 +350,158 @@ export default function MainMenu() {
                     </div>
                 </div>
             </div>
+
+            {/* Lobby Modal Overlay */}
+            {isLobbyOpen && (
+                <div className="lobby-modal-overlay">
+                    <div className="lobby-modal-card">
+                        
+                        {matchState === 'INITIALIZING' && (
+                            <div className="lobby-modal-content">
+                                <div className="lobby-modal-header">
+                                    <h2>⚡ Trực tuyến Matchmaking</h2>
+                                    <p className="lobby-status-pill">{status}</p>
+                                </div>
+
+                                <div className="time-controls-section">
+                                    <h3>Chọn thời gian chơi</h3>
+                                    <div className="time-controls-grid">
+                                        <div 
+                                            className={`time-card ${matchType === 'bullet' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('bullet')}
+                                        >
+                                            <span className="time-icon">⚡</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Bullet</span>
+                                                <span className="time-duration">1 phút</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`time-card ${matchType === 'blitz' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('blitz')}
+                                        >
+                                            <span className="time-icon">🔥</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Blitz</span>
+                                                <span className="time-duration">3 phút</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`time-card ${matchType === 'rapid' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('rapid')}
+                                        >
+                                            <span className="time-icon">⏱️</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Rapid</span>
+                                                <span className="time-duration">10 phút</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`time-card ${matchType === 'classical' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('classical')}
+                                        >
+                                            <span className="time-icon">🏆</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Classical</span>
+                                                <span className="time-duration">30 phút</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="lobby-actions-section">
+                                    <button onClick={joinMatchmaking} className="lobby-primary-btn">
+                                        🚀 Tìm đối thủ ngẫu nhiên
+                                    </button>
+
+                                    <div className="lobby-separator">
+                                        <span>HOẶC</span>
+                                    </div>
+
+                                    <div className="lobby-private-actions">
+                                        <button onClick={handleCreateRoom} className="lobby-secondary-btn">
+                                            🏠 Tạo phòng riêng
+                                        </button>
+                                        <div className="lobby-join-group">
+                                            <input
+                                                type="text"
+                                                className="lobby-input"
+                                                placeholder="Mã phòng..."
+                                                value={joinRoomCode}
+                                                onChange={(e) => setJoinRoomCode(e.target.value.toUpperCase())}
+                                            />
+                                            <button onClick={handleJoinRoom} className="lobby-join-btn">
+                                                Vào phòng
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button onClick={() => setIsLobbyOpen(false)} className="lobby-back-btn">
+                                    Quay lại Menu
+                                </button>
+                            </div>
+                        )}
+
+                        {matchState === 'SEARCHING' && (
+                            <div className="lobby-modal-content searching-content">
+                                <div className="lobby-spinner-container">
+                                    <div className="lobby-pulse-ring"></div>
+                                    <div className="lobby-spinner"></div>
+                                    <span className="lobby-search-icon">🔍</span>
+                                </div>
+                                <h2 className="searching-title">Đang tìm trận đấu...</h2>
+                                <p className="searching-status">{status}</p>
+                                
+                                {roomCode && (
+                                    <div className="lobby-room-code-box">
+                                        <span className="room-label">MÃ PHÒNG CỦA BẠN:</span>
+                                        <h1 className="room-code">{roomCode}</h1>
+                                        <p className="room-desc">Hãy gửi mã này cho bạn bè để cùng chơi!</p>
+                                    </div>
+                                )}
+
+                                <button onClick={cancelSearch} className="lobby-cancel-btn">
+                                    Hủy tìm kiếm
+                                </button>
+                            </div>
+                        )}
+
+                        {matchState === 'FOUND' && (
+                            <div className="lobby-modal-content found-content">
+                                <div className="match-found-badge">
+                                    <span>ĐÃ TÌM THẤY TRẬN!</span>
+                                </div>
+                                
+                                <div className="opponent-card">
+                                    <div className="opponent-avatar">👤</div>
+                                    <div className="opponent-details">
+                                        <h2 className="opponent-name">{opponent?.name}</h2>
+                                        <p className="opponent-stats">🌍 {opponent?.country} • ⭐ Hệ số: {opponent?.rating}</p>
+                                    </div>
+                                </div>
+
+                                {!hasAccepted ? (
+                                    <div className="lobby-decision-group">
+                                        <button onClick={handleAccept} className="lobby-accept-btn">
+                                            CHẤP NHẬN ({confirmCountdown}s)
+                                        </button>
+                                        <button onClick={handleReject} className="lobby-reject-btn">
+                                            TỪ CHỐI
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="lobby-waiting-opponent">
+                                        <div className="small-loader"></div>
+                                        <p>Đã chấp nhận! Đang chờ đối thủ xác nhận...</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
