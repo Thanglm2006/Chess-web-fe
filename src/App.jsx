@@ -23,6 +23,9 @@ const PrivateRoute = ({ children }) => {
             const t = await AuthService.getValidToken();
             setToken(t);
             setLoading(false);
+            if (t) {
+                socketClient.connect();
+            }
         };
 
         checkToken();

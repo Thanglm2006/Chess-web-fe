@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
+import { socketClient } from '../services/SocketService';
 import friendsIcon from '../assets/friends.svg';
 
 export default function Sidebar({ username }) {
@@ -9,6 +10,7 @@ export default function Sidebar({ username }) {
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
+        socketClient.disconnect();
         navigate('/login');
     };
 

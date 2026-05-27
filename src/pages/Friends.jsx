@@ -105,6 +105,7 @@ export default function Friends() {
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
+        socketClient.disconnect();
         navigate('/login');
     };
 
