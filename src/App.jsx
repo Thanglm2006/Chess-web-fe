@@ -7,13 +7,10 @@ import AIPlay from './pages/AIPlay';
 import OnlinePlay from './pages/OnlinePlay';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
-<<<<<<< HEAD
 import Tournaments from './pages/Tournaments';
 import AdminDashboard from './pages/AdminDashboard';
 import Replay from './pages/Replay';
-=======
 import ReplayPage from './pages/ReplayPage';
->>>>>>> ef2b506388ac8dc02a612fc3e7703a3fea8db95a
 import { AuthService } from './services/AuthService';
 import { useEffect, useState } from "react";
 import './index.css';
