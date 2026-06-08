@@ -7,6 +7,9 @@ import AIPlay from './pages/AIPlay';
 import OnlinePlay from './pages/OnlinePlay';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
+import Tournaments from './pages/Tournaments';
+import AdminDashboard from './pages/AdminDashboard';
+import Replay from './pages/Replay';
 import { AuthService } from './services/AuthService';
 import { useEffect, useState } from "react";
 import './index.css';
@@ -91,6 +94,30 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Friends />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tournaments"
+                        element={
+                            <PrivateRoute>
+                                <Tournaments />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin"
+                        element={
+                            <PrivateRoute>
+                                <AdminDashboard />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/replay/:gameId"
+                        element={
+                            <PrivateRoute>
+                                <Replay />
                             </PrivateRoute>
                         }
                     />

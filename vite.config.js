@@ -16,11 +16,11 @@ export default defineConfig({
       '/api/move': 'http://localhost:5000',
       '/api/ai_move': 'http://localhost:5000',
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://chess.caelestial.store',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8080',
+        target: 'ws://chess.caelestial.store',
         ws: true,
       }
     }

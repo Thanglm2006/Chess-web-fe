@@ -16,6 +16,10 @@ export default function Sidebar({ username }) {
 
     const isActive = (path) => location.pathname === path;
 
+    const token = localStorage.getItem('accessToken');
+    const payload = token ? AuthService.parseToken(token) : null;
+    const isAdmin = payload?.role === 'ROLE_ADMIN';
+
     return (
         <div className="sidebar">
             <div className="sidebar-logo">
@@ -31,6 +35,13 @@ export default function Sidebar({ username }) {
                 </a>
                 <a 
                     href="#" 
+                    className={`nav-item ${isActive('/tournaments') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); navigate('/tournaments'); }}
+                >
+                    <span className="icon">🏆</span> Giải đấu
+                </a>
+                <a 
+                    href="#" 
                     className={`nav-item ${isActive('/friends') ? 'active' : ''}`}
                     onClick={(e) => { e.preventDefault(); navigate('/friends'); }}
                 >
@@ -38,6 +49,15 @@ export default function Sidebar({ username }) {
                         <img src={friendsIcon} alt="Friends" style={{ width: '24px', height: '24px' }} />
                     </span> Bạn bè
                 </a>
+                {isAdmin && (
+                    <a 
+                        href="#" 
+                        className={`nav-item ${isActive('/admin') ? 'active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); navigate('/admin'); }}
+                    >
+                        <span className="icon">🛡️</span> Admin
+                    </a>
+                )}
             </nav>
             <div className="sidebar-bottom">
                 <div className="search-bar">

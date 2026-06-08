@@ -12,7 +12,7 @@ export const AuthService = {
         return payload.exp < now;
     },
     refreshToken: async () => {
-        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${BASE_URL}/refresh`, {}, {
+        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8087'}${BASE_URL}/refresh`, {}, {
             withCredentials: true
         });
         return response.data;
@@ -60,6 +60,16 @@ export const AuthService = {
 
     verifyOTP: async (email, otp) => {
         const response = await api.post(`${BASE_URL}/verify-otp`, { email, otp });
+        return response.data;
+    },
+
+    forgotPassword: async (email) => {
+        const response = await api.post(`${BASE_URL}/forgot-password`, { email });
+        return response.data;
+    },
+
+    resetPassword: async (email, otp, newPassword) => {
+        const response = await api.post(`${BASE_URL}/reset-password`, { email, otp, newPassword });
         return response.data;
     },
 
