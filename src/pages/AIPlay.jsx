@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AiGameService } from '../services/AiGameService';
+import { AuthService } from '../services/AuthService';
+import Sidebar from '../components/Sidebar';
 import '../index.css';
 
-function App() {
+function AIPlay() {
   const navigate = useNavigate();
+  const [username, setUsername] = useState('User');
   const [mode, setMode] = useState('human-white'); // 'human-white' or 'human-black'
   const [status, setStatus] = useState('Select your settings and click Start Game');
   const [difficulty, setDifficulty] = useState(3); // 1 = Easy, 2 = Medium, 3 = Hard, 4 = Expert
@@ -13,12 +16,31 @@ function App() {
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState('best_model');
   const [gameHistory, setGameHistory] = useState([]);
+  const [isGameOver, setIsGameOver] = useState(false);
   
   const isWait = useRef(false);
   const gameRef = useRef(null);
   const boardRef = useRef(null);
   const modeRef = useRef('human-white');
   const gameIdRef = useRef(null);
+  const selectedSquareRef = useRef(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = await AuthService.getValidToken();
+        if (token) {
+          const payload = AuthService.parseToken(token);
+          if (payload) {
+            setUsername(payload.username || payload.sub || 'User');
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse token in AIPlay", e);
+      }
+    };
+    fetchUser();
+  }, []);
 
   // Keep references fresh for vanilla JS callbacks
   useEffect(() => {
@@ -29,15 +51,107 @@ function App() {
     gameIdRef.current = gameId;
   }, [gameId]);
 
+  // Load models and check for active game on mount
   useEffect(() => {
-    // Initialize vanilla chess/chessboard objects
+    loadModels();
+    resumeActiveGame();
+  }, []);
+
+  // Initialize board and game logic only when gameId is active
+  useEffect(() => {
+    if (!gameId) return;
+
     if (!window.Chess || !window.Chessboard) {
       setStatus('Waiting for chess engine scripts to load...');
       return;
     }
 
-    gameRef.current = new window.Chess();
-    
+    if (!gameRef.current) {
+      gameRef.current = new window.Chess();
+    }
+
+    const clearHighlights = () => {
+      document.querySelectorAll('#board .highlight-square').forEach(el => {
+        el.classList.remove('highlight-square');
+      });
+      document.querySelectorAll('#board .highlight-square-selected').forEach(el => {
+        el.classList.remove('highlight-square-selected');
+      });
+    };
+
+    const handleBoardClick = async (event) => {
+      if (isGameOver || isWait.current) return;
+      if (!gameRef.current || !boardRef.current) return;
+
+      const clickedSquareEl = event.target.closest('[data-square]');
+      if (!clickedSquareEl) return;
+
+      const square = clickedSquareEl.getAttribute('data-square');
+
+      // Check turn
+      const turn = gameRef.current.turn(); // 'w' or 'b'
+      const playerChar = modeRef.current === 'human-white' ? 'w' : 'b';
+      if (turn !== playerChar) return;
+
+      const piece = gameRef.current.get(square);
+
+      // If clicked own piece, select it and highlight legal moves
+      if (piece && piece.color === playerChar) {
+        clearHighlights();
+        selectedSquareRef.current = square;
+
+        clickedSquareEl.classList.add('highlight-square-selected');
+
+        const moves = gameRef.current.moves({ square: square, verbose: true });
+        moves.forEach(m => {
+          const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+          if (destEl) {
+            destEl.classList.add('highlight-square');
+          }
+        });
+      } else if (selectedSquareRef.current) {
+        // Try to move
+        const source = selectedSquareRef.current;
+        let move = gameRef.current.move({
+          from: source,
+          to: square,
+          promotion: 'q'
+        });
+
+        clearHighlights();
+        selectedSquareRef.current = null;
+
+        if (move !== null) {
+          // Redraw board instantly
+          boardRef.current.position(gameRef.current.fen());
+
+          isWait.current = true;
+          setStatus('AI is calculating its response...');
+
+          const prevHistory = [...gameHistory];
+          if (move.san) {
+            setGameHistory(prev => [...prev, move.san]);
+          }
+
+          try {
+              const state = await AiGameService.makeMove(gameIdRef.current, move.san);
+              updateGameStatus(state);
+          } catch (e) {
+              console.error(e);
+              setStatus(e.response?.data?.message || 'Move rejected or AI service offline.');
+              isWait.current = false;
+              
+              gameRef.current.undo();
+              setGameHistory(prevHistory);
+              
+              if (boardRef.current && gameRef.current) {
+                boardRef.current.position(gameRef.current.fen());
+              }
+          }
+        }
+      }
+    };
+
     const onDragStart = (source, piece, position, orientation) => {
       if (isWait.current) return false;
       if (gameRef.current.game_over()) return false;
@@ -52,6 +166,23 @@ function App() {
       if (modeRef.current === 'human-white' && turn === 'b') return false;
       if (modeRef.current === 'human-black' && turn === 'w') return false;
 
+      // Select this square and show legal moves during drag
+      clearHighlights();
+      selectedSquareRef.current = source;
+
+      const sourceEl = document.querySelector(`#board [data-square="${source}"]`);
+      if (sourceEl) {
+        sourceEl.classList.add('highlight-square-selected');
+      }
+
+      const moves = gameRef.current.moves({ square: source, verbose: true });
+      moves.forEach(m => {
+        const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+        if (destEl) {
+          destEl.classList.add('highlight-square');
+        }
+      });
+
       return true;
     };
 
@@ -63,6 +194,10 @@ function App() {
       });
 
       if (move === null) return 'snapback';
+
+      // Clear highlights on drag drop
+      clearHighlights();
+      selectedSquareRef.current = null;
 
       isWait.current = true;
       setStatus('AI is calculating its response...');
@@ -106,29 +241,43 @@ function App() {
       }
     };
 
+    const playerColor = modeRef.current === 'human-white' ? 'white' : 'black';
     const config = {
       draggable: true,
-      position: 'start',
+      position: gameRef.current.fen() || 'start',
+      orientation: playerColor,
       onDragStart: onDragStart,
       onDrop: onDrop,
       onSnapEnd: onSnapEnd,
+      moveSpeed: 'fast',
+      snapbackSpeed: 150,
+      snapSpeed: 100,
       pieceTheme: '/chessPieces/{piece}.png'
     };
 
-    // Tiny delay to ensure board container is loaded in DOM
-    setTimeout(() => {
+    // Use interval to wait until #board container is loaded in DOM
+    const checkBoardExist = setInterval(() => {
       if (document.getElementById('board')) {
+        clearInterval(checkBoardExist);
         boardRef.current = window.Chessboard('board', config);
-        
-        // Auto-check and resume active game if any exists
-        resumeActiveGame();
-      }
-    }, 150);
 
-    // Fetch available checkpoints
-    loadModels();
-    
-  }, []);
+        // Bind custom board click event listener
+        const boardEl = document.getElementById('board');
+        if (boardEl) {
+          boardEl.removeEventListener('click', handleBoardClick);
+          boardEl.addEventListener('click', handleBoardClick);
+        }
+      }
+    }, 50);
+
+    return () => {
+      clearInterval(checkBoardExist);
+      const boardEl = document.getElementById('board');
+      if (boardEl) {
+        boardEl.removeEventListener('click', handleBoardClick);
+      }
+    };
+  }, [gameId]);
 
   const loadModels = async () => {
     try {
@@ -147,24 +296,32 @@ function App() {
     try {
       const active = await AiGameService.getActiveGame();
       if (active) {
-        setGameId(active.gameId);
+        if (!gameRef.current) {
+          gameRef.current = new window.Chess();
+        }
+        gameRef.current.load(active.fen);
+
         const playerCol = active.playerColor; // "WHITE" or "BLACK"
         setMode(playerCol === 'WHITE' ? 'human-white' : 'human-black');
         setDifficulty(active.difficulty);
         setSelectedModel(active.aiModel);
         setGameHistory(active.history || []);
-
-        if (gameRef.current && boardRef.current) {
-          gameRef.current.load(active.fen);
-          boardRef.current.position(active.fen);
-          boardRef.current.orientation(playerCol.toLowerCase());
-        }
+        setIsGameOver(active.isGameOver || active.is_game_over || false);
+        setGameId(active.gameId);
         
-        setStatus('Resumed active game! Your turn.');
-        isWait.current = false;
+        if (active.isGameOver || active.is_game_over) {
+          setStatus('Trận đấu đã kết thúc.');
+          isWait.current = true;
+        } else {
+          setStatus('Đã khôi phục ván đấu! Lượt của bạn.');
+          isWait.current = false;
+        }
+      } else {
+        navigate('/menu', { state: { openAiLobby: true } });
       }
     } catch (e) {
       console.error('Error checking active game session:', e);
+      navigate('/menu', { state: { openAiLobby: true } });
     }
   };
 
@@ -176,12 +333,12 @@ function App() {
     boardRef.current.position(stateData.fen);
 
     if (stateData.isGameOver || stateData.is_game_over) {
-      const resultText = stateData.result ? ` [Result: ${stateData.result}]` : '';
-      setStatus(`Game Over! ${stateData.termination || 'Match complete.'}${resultText}`);
-      setGameId(null);
+      const resultText = stateData.result ? ` [Kết quả: ${stateData.result}]` : '';
+      setStatus(`Ván đấu kết thúc! ${stateData.termination || 'Hoàn thành.'}${resultText}`);
+      setIsGameOver(true);
       isWait.current = true;
     } else {
-      setStatus('Your Turn');
+      setStatus('Lượt của bạn');
       isWait.current = false;
     }
 
@@ -203,210 +360,181 @@ function App() {
 
   const handleStartFreshGame = async () => {
     isWait.current = true;
-    setStatus('Initializing board and contacting AI backend...');
+    setStatus('Đang khởi tạo bàn cờ và kết nối tới máy chủ AI...');
 
     const playerColor = mode === 'human-white' ? 'WHITE' : 'BLACK';
 
     try {
       const state = await AiGameService.startGame(selectedModel, difficulty, playerColor);
       
-      setGameId(state.gameId);
-      setGameHistory([]);
-
-      if (gameRef.current && boardRef.current) {
-        gameRef.current.reset();
-        gameRef.current.load(state.fen);
-        boardRef.current.position(state.fen);
-        boardRef.current.orientation(playerColor.toLowerCase());
+      if (!gameRef.current) {
+        gameRef.current = new window.Chess();
       }
+      gameRef.current.reset();
+      gameRef.current.load(state.fen);
+
+      setGameHistory([]);
+      setIsGameOver(false);
+      setGameId(state.gameId);
 
       if (state.isGameOver) {
-        setStatus(`Game ended quickly. Result: ${state.result}`);
-        setGameId(null);
+        setStatus(`Ván đấu kết thúc sớm. Kết quả: ${state.result}`);
+        setIsGameOver(true);
         isWait.current = true;
       } else {
         if (playerColor === 'BLACK' && state.aiFirstMove) {
-          setStatus(`AI opened with ${state.aiFirstMove}. Your turn!`);
+          setStatus(`AI đã đi trước quân ${state.aiFirstMove}. Lượt của bạn!`);
           setGameHistory([state.aiFirstMove]);
         } else {
-          setStatus('Game started! Your turn.');
+          setStatus('Trận đấu bắt đầu! Lượt của bạn.');
         }
         isWait.current = false;
       }
     } catch (e) {
       console.error(e);
-      setStatus('Failed to start AI game. Ensure your backend is running.');
+      setStatus('Không thể bắt đầu trận đấu AI. Vui lòng thử lại.');
       isWait.current = false;
     }
   };
 
   const handleResign = async () => {
     if (!gameId) return;
-    if (window.confirm('Are you sure you want to resign this game?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xin thua ván đấu này?')) {
       try {
         const res = await AiGameService.resignGame(gameId);
-        setStatus(`You resigned. Result: ${res.result} (AI wins)`);
-        setGameId(null);
+        setStatus(`Bạn đã xin thua. Kết quả: ${res.result} (AI thắng)`);
+        setIsGameOver(true);
         isWait.current = true;
       } catch (e) {
         console.error(e);
-        setStatus('Failed to resign game.');
+        setStatus('Không thể xin thua ván đấu.');
       }
     }
   };
 
-  return (
-    <div className="container">
-      <header>
-        <h1>Play <span>with AI</span></h1>
-      </header>
+  if (!gameId) {
+    return (
+      <div className="main-menu-wrapper">
+        <Sidebar username={username} />
+        <div className="board-area" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="glass-panel" style={{ textAlign: 'center', padding: '40px', maxWidth: '360px', borderRadius: '20px' }}>
+            <div className="lobby-spinner-container" style={{ margin: '0 auto 20px', position: 'relative', width: '60px', height: '60px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <div className="lobby-pulse-ring" style={{ position: 'absolute', width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.15)', animation: 'lobbyPulse 1.5s infinite ease-in-out' }}></div>
+              <div className="lobby-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255, 255, 255, 0.1)', borderTop: '3px solid var(--accent-blue)', borderRadius: '50%', animation: 'lobbySpin 1s infinite linear' }}></div>
+            </div>
+            <h3 style={{ color: 'white', marginBottom: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}>Đang tải ván đấu AI...</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Vui lòng đợi giây lát</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      <div className="main-layout" style={{ justifyContent: 'center' }}>
-        {/* Board Column */}
-        <div className="board-column" style={{ position: 'relative' }}>
+  return (
+    <div className="main-menu-wrapper">
+      <Sidebar username={username} />
+
+      {/* Center Area (Chess Board) */}
+      <div className="board-area">
+        <div className="board-container" style={{ position: 'relative' }}>
           {/* Top Player (AI Player Metadata) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', padding: '0 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent-blue)' }}>
-                AI Checkpoint: {selectedModel} (Diff: {difficulty})
-              </div>
+              <div className="avatar-small" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}><span className="icon">🤖</span></div>
+              <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--accent-blue)' }}>
+                Máy AI (Độ khó: {difficulty === 1 ? 'Dễ' : difficulty === 2 ? 'Trung bình' : difficulty === 3 ? 'Khó' : 'Chuyên gia'})
+              </span>
+            </div>
+            <div style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', padding: '5px 12px', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--accent-blue)', fontWeight: 'bold' }}>
+              {selectedModel === 'best_model' ? 'Mô hình tốt nhất' : selectedModel}
             </div>
           </div>
 
-          <div id="board" style={{ width: '600px' }}></div>
+          <div id="board" className="chess-board-wrapper" style={{ width: '100%', aspectRatio: '1/1', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}></div>
 
           {/* Bottom Player (Human Player Metadata) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '0 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#4ade80' }}>You</div>
+              <div className="avatar-small" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}><span className="icon">👤</span></div>
+              <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                {username} <span className="flag">🇻🇳</span>
+              </span>
+            </div>
+            <div style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)', padding: '5px 12px', borderRadius: '6px', fontSize: '0.85rem', color: '#4ade80', fontWeight: 'bold' }}>
+              Bạn
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Dashboard Column */}
-        <div className="dashboard-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Match Settings Panel / Game State Info */}
-          <div className="glass-panel" style={{ minWidth: '320px' }}>
-            <h2>Match Settings</h2>
-            
-            {!gameId ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
-                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Side Selection</span>
-                  <select 
-                    value={mode} 
-                    onChange={e => setMode(e.target.value)}
-                    className="custom-input"
-                    style={{ width: '100%', padding: '8px' }}
-                  >
-                    <option value="human-white">Play as White (AI plays Black)</option>
-                    <option value="human-black">Play as Black (AI plays White)</option>
-                  </select>
-                </div>
+      {/* Right Panel (Dashboard) */}
+      <div className="right-panel">
+        {/* Match Settings Panel / Game State Info */}
+        <div className="glass-panel" style={{ width: '100%', marginBottom: '20px', boxSizing: 'border-box' }}>
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--text-primary)' }}>📊 Chi tiết trận đấu</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Mô hình AI</span>
+              <strong>{selectedModel === 'best_model' ? 'Mặc định' : selectedModel}</strong>
+            </div>
+            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Độ khó</span>
+              <strong>{difficulty === 1 ? 'Dễ' : difficulty === 2 ? 'Trung bình' : difficulty === 3 ? 'Khó' : 'Chuyên gia'}</strong>
+            </div>
+            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Trạng thái</span>
+              <strong style={{ color: isGameOver ? '#f87171' : isWait.current ? '#fbbf24' : '#4ade80' }}>
+                {isGameOver ? "ĐÃ KẾT THÚC" : isWait.current ? "AI ĐANG NGHĨ..." : "LƯỢT CỦA BẠN"}
+              </strong>
+            </div>
 
-                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
-                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Neural Checkpoint</span>
-                  <select 
-                    value={selectedModel} 
-                    onChange={e => setSelectedModel(e.target.value)}
-                    className="custom-input"
-                    style={{ width: '100%', padding: '8px' }}
-                  >
-                    <option value="best_model">Default Best Model</option>
-                    {models.map(m => (
-                      <option key={`model-${m.key}`} value={m.key}>
-                        {m.display || m.key}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="stat-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
-                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>AI Difficulty</span>
-                  <select 
-                    value={difficulty} 
-                    onChange={e => setDifficulty(Number(e.target.value))}
-                    className="custom-input"
-                    style={{ width: '100%', padding: '8px' }}
-                  >
-                    <option value={1}>Easy (Fast/Intuitive)</option>
-                    <option value={2}>Medium (Positional)</option>
-                    <option value={3}>Hard (ResNet Tactical)</option>
-                    <option value={4}>Expert (Deep MCTS Search)</option>
-                  </select>
-                </div>
-
-                <button onClick={handleStartFreshGame} className="primary-btn" style={{ padding: '12px', marginTop: '10px' }}>
-                  Start Match
-                </button>
-              </div>
+            {isGameOver ? (
+              <button onClick={() => navigate('/menu')} className="primary-btn" style={{ padding: '12px', fontSize: '0.85rem', marginTop: '10px', width: '100%', fontWeight: 'bold' }}>
+                Quay lại Menu chính ↩️
+              </button>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className="stat-box">
-                  <span>Engine Checkpoint</span>
-                  <strong>{selectedModel}</strong>
-                </div>
-                <div className="stat-box">
-                  <span>Difficulty Level</span>
-                  <strong>{difficulty === 1 ? 'Easy' : difficulty === 2 ? 'Medium' : difficulty === 3 ? 'Hard' : 'Expert'}</strong>
-                </div>
-                <div className="stat-box">
-                  <span>Match Status</span>
-                  <strong style={{ color: isWait.current ? '#f87171' : '#4ade80' }}>
-                    {isWait.current ? "AI THINKING..." : "YOUR TURN"}
-                  </strong>
-                </div>
-                <button onClick={handleResign} className="secondary-btn" style={{ color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)', padding: '12px' }}>
-                  Resign Match
-                </button>
-              </div>
+              <button onClick={handleResign} className="secondary-btn" style={{ color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)', padding: '12px', fontSize: '0.85rem', marginTop: '10px', width: '100%' }}>
+                Xin thua 🏳️
+              </button>
             )}
           </div>
+        </div>
 
-          {/* Status Info Box */}
-          <div className="glass-panel" style={{ padding: '15px' }}>
-            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '5px' }}>Engine Output / Logs</span>
-            <strong style={{ fontSize: '1rem', color: '#4ade80' }}>{status}</strong>
+        {/* Status Info Box / Engine Logs */}
+        <div className="glass-panel" style={{ width: '100%', padding: '15px', marginBottom: '20px', boxSizing: 'border-box' }}>
+          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>📡 Phản hồi từ hệ thống AI</span>
+          <strong style={{ fontSize: '0.95rem', color: '#4ade80', lineHeight: '1.4' }}>{status}</strong>
+        </div>
+
+        {/* Move History Panel */}
+        <div className="glass-panel" style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem' }}>📜 Lịch sử nước đi</h3>
+          <div style={{ flex: 1, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', padding: '12px', overflowY: 'auto' }}>
+            {gameHistory.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: '8px', fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                {Array.from({ length: Math.ceil(gameHistory.length / 2) }).map((_, idx) => (
+                  <React.Fragment key={idx}>
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      {idx + 1}. <span style={{ color: 'white', fontWeight: 'bold' }}>{gameHistory[idx * 2]}</span>
+                    </div>
+                    <div>
+                      {gameHistory[idx * 2 + 1] ? (
+                        <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{gameHistory[idx * 2 + 1]}</span>
+                      ) : (
+                        <span style={{ color: 'rgba(255,255,255,0.2)' }}>...</span>
+                      )}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+            ) : (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', display: 'block', textAlign: 'center', marginTop: '10px' }}>Chưa có nước đi nào được thực hiện.</span>
+            )}
           </div>
-
-          {/* Move History Panel */}
-          <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
-            <h3>Move History</h3>
-            <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '10px', overflowY: 'auto', maxHeight: '180px' }}>
-              {gameHistory.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: '5px', fontSize: '0.9rem', fontFamily: 'monospace' }}>
-                  {Array.from({ length: Math.ceil(gameHistory.length / 2) }).map((_, idx) => (
-                    <React.Fragment key={idx}>
-                      <div style={{ color: 'var(--text-muted)' }}>
-                        {idx + 1}. <span style={{ color: 'white', fontWeight: 'bold' }}>{gameHistory[idx * 2]}</span>
-                      </div>
-                      <div>
-                        {gameHistory[idx * 2 + 1] ? (
-                          <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{gameHistory[idx * 2 + 1]}</span>
-                        ) : (
-                          '-'
-                        )}
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
-              ) : (
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>No moves played yet.</span>
-              )}
-            </div>
-          </div>
-
-          {/* Back to main menu */}
-          {!gameId && (
-            <button onClick={() => navigate('/menu')} className="secondary-btn" style={{ color: '#f87171', border: 'none', cursor: 'pointer', padding: '10px', fontWeight: 'bold' }}>
-              ← Back to Menu
-            </button>
-          )}
         </div>
       </div>
     </div>
   );
 }
 
-export default App;
+export default AIPlay;

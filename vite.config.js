@@ -5,9 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true, // Cho phép các thiết bị khác trong cùng Wi-Fi truy cập
     hmr: {
       protocol: 'ws',
-      host: 'localhost',
     },
     proxy: {
       '/api/state': 'http://localhost:5000',

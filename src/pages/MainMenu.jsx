@@ -1,18 +1,59 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { GameService } from '../services/GameService';
 import { FriendService } from '../services/FriendService';
+import { AiGameService } from '../services/AiGameService';
 import { socketClient } from '../services/SocketService';
+import api from '../services/api';
 import '../index.css';
 import Sidebar from '../components/Sidebar';
 
 export default function MainMenu() {
     const navigate = useNavigate();
+    const location = useLocation();
     const boardRef = useRef(null);
     const [username, setUsername] = useState('Guest');
     const [friends, setFriends] = useState([]);
     const [matchType, setMatchType] = useState('rapid');
+
+    // AI Play Lobby Modal States
+    const [isAiLobbyOpen, setIsAiLobbyOpen] = useState(false);
+    const [aiMode, setAiMode] = useState('human-white'); // 'human-white' or 'human-black'
+    const [aiDifficulty, setAiDifficulty] = useState(3); // 1 = Easy, 2 = Medium, 3 = Hard, 4 = Expert
+    const [aiModels, setAiModels] = useState([]);
+    const [selectedAiModel, setSelectedAiModel] = useState('best_model');
+
+    // Online Play Lobby Modal States
+    const [isLobbyOpen, setIsLobbyOpen] = useState(false);
+    const [matchState, setMatchState] = useState('INITIALIZING');
+    const [status, setStatus] = useState('Connected. Select a mode.');
+    const [gameId, setGameId] = useState(null);
+    const [opponent, setOpponent] = useState(null);
+    const [confirmCountdown, setConfirmCountdown] = useState(10);
+    const [hasAccepted, setHasAccepted] = useState(false);
+    
+    // Private Room State
+    const [roomCode, setRoomCode] = useState('');
+    const [joinRoomCode, setJoinRoomCode] = useState('');
+
+    const confirmTimer = useRef(null);
+    const gameIdRef = useRef(null);
+
+    useEffect(() => {
+        gameIdRef.current = gameId;
+    }, [gameId]);
+
+    // Handle check for openLobby or openAiLobby from redirect
+    useEffect(() => {
+        if (location.state?.openLobby) {
+            setIsLobbyOpen(true);
+            navigate(location.pathname, { replace: true, state: {} });
+        } else if (location.state?.openAiLobby) {
+            setIsAiLobbyOpen(true);
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location, navigate]);
 
     useEffect(() => {
         const init = async () => {
@@ -44,6 +85,17 @@ export default function MainMenu() {
                 }
             } catch (error) {
                 console.error("Reconnection check failed", error);
+            }
+
+            // Fetch AI Checkpoints/Models
+            try {
+                const data = await AiGameService.getModels();
+                const modelList = Array.isArray(data) ? data : (data.models || []);
+                setAiModels(modelList);
+                const defaultKey = data.default || (modelList[0]?.key || 'best_model');
+                setSelectedAiModel(defaultKey);
+            } catch (e) {
+                console.error('Failed to load AI checkpoints in MainMenu', e);
             }
 
             // Render background board
@@ -91,6 +143,131 @@ export default function MainMenu() {
         };
     }, [navigate]);
 
+    // Socket client message listener for the lobby modal
+    useEffect(() => {
+        const handleLobbySocketMessage = (data) => {
+            try {
+                const msg = JSON.parse(data);
+                console.log("Lobby Socket Message:", msg);
+                switch (msg.type) {
+                    case 'ROOM_CREATED':
+                        setRoomCode(msg.code);
+                        setStatus('Waiting for opponent to join room: ' + msg.code);
+                        setMatchState('SEARCHING');
+                        break;
+                    case 'PREPARE_GAME':
+                        setMatchState('FOUND');
+                        setGameId(msg.gameId);
+                        setOpponent({
+                            id: msg.opponentId,
+                            name: msg.opponentName,
+                            country: msg.opponentCountry || 'Earth',
+                            rating: msg.opponentRating || 1200
+                        });
+                        setHasAccepted(false);
+                        startConfirmCountdown(msg.timeout || 10);
+                        break;
+                    case 'MATCH_CANCELLED':
+                        if (confirmTimer.current) clearInterval(confirmTimer.current);
+                        setMatchState('INITIALIZING');
+                        setStatus(msg.reason || 'Match cancelled');
+                        break;
+                    case 'GAME_START':
+                        if (confirmTimer.current) clearInterval(confirmTimer.current);
+                        setIsLobbyOpen(false);
+                        // Reset modal state
+                        setMatchState('INITIALIZING');
+                        setStatus('Connected. Select a mode.');
+                        // Navigate to play-online with game details in state
+                        navigate('/play-online', { state: { gameStartMsg: msg } });
+                        break;
+                    default:
+                        break;
+                }
+            } catch (e) {
+                console.error("Lobby socket handling error", e);
+            }
+        };
+
+        if (isLobbyOpen) {
+            socketClient.addListener(handleLobbySocketMessage);
+        }
+        return () => {
+            socketClient.removeListener(handleLobbySocketMessage);
+            if (confirmTimer.current) clearInterval(confirmTimer.current);
+        };
+    }, [isLobbyOpen]);
+
+    const startConfirmCountdown = (t) => {
+        setConfirmCountdown(t);
+        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        confirmTimer.current = setInterval(() => {
+            setConfirmCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(confirmTimer.current);
+                    handleReject();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const joinMatchmaking = async () => {
+        setMatchState('SEARCHING');
+        setHasAccepted(false);
+        setStatus('Searching for opponent...');
+        try {
+            const token = await AuthService.getValidToken();
+            const userData = AuthService.parseToken(token);
+            await api.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
+        } catch (err) {
+            setStatus('Matchmaking Error: ' + err.message);
+        }
+    };
+
+    const handleStartAiGame = async () => {
+        const playerColor = aiMode === 'human-white' ? 'WHITE' : 'BLACK';
+        try {
+            await AiGameService.startGame(selectedAiModel, aiDifficulty, playerColor);
+            setIsAiLobbyOpen(false);
+            navigate('/play-ai');
+        } catch (e) {
+            alert('Không thể bắt đầu trận đấu với AI. Hãy chắc chắn rằng máy chủ AI đang chạy.');
+        }
+    };
+
+    const handleCreateRoom = () => {
+        setStatus('Creating private room...');
+        socketClient.send({ type: 'CREATE_ROOM', matchType: matchType });
+    };
+
+    const handleJoinRoom = () => {
+        if (!joinRoomCode) return;
+        setStatus(`Joining room ${joinRoomCode}...`);
+        socketClient.send({ type: 'JOIN_ROOM', code: joinRoomCode });
+    };
+
+    const handleAccept = () => {
+        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        setHasAccepted(true);
+        socketClient.send({ type: 'READY', gameId: gameIdRef.current });
+    };
+
+    const handleReject = () => {
+        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        socketClient.send({ type: 'REJECT_MATCH', gameId: gameIdRef.current });
+        setMatchState('INITIALIZING');
+        setStatus('Connected. Select a mode.');
+    };
+
+    const cancelSearch = () => {
+        setMatchState('INITIALIZING');
+        setRoomCode('');
+        socketClient.send({ type: 'LEAVE_QUEUE' });
+        setStatus('Connected. Select a mode.');
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
         socketClient.disconnect();
@@ -123,7 +300,7 @@ export default function MainMenu() {
                         <h2>🏆 So tài cờ vua</h2>
                     </div>
                     <div className="action-buttons">
-                        <button onClick={() => navigate('/play-online')} className="action-btn primary-action">
+                        <button onClick={() => setIsLobbyOpen(true)} className="action-btn primary-action">
                             <span className="btn-icon">⚡</span>
                             <div className="btn-text">
                                 <strong>Chơi trực tuyến</strong>
@@ -131,7 +308,7 @@ export default function MainMenu() {
                             </div>
                         </button>
 
-                        <button onClick={() => navigate('/play-ai')} className="action-btn secondary-action">
+                        <button onClick={() => setIsAiLobbyOpen(true)} className="action-btn secondary-action">
                             <span className="btn-icon">🤖</span>
                             <div className="btn-text">
                                 <strong>Chơi với Bot</strong>
@@ -206,6 +383,252 @@ export default function MainMenu() {
                     </div>
                 </div>
             </div>
+
+            {/* Lobby Modal Overlay */}
+            {isLobbyOpen && (
+                <div className="lobby-modal-overlay">
+                    <div className="lobby-modal-card">
+                        
+                        {matchState === 'INITIALIZING' && (
+                            <div className="lobby-modal-content">
+                                <div className="lobby-modal-header">
+                                    <h2>⚡ Trực tuyến Matchmaking</h2>
+                                    <p className="lobby-status-pill">{status}</p>
+                                </div>
+
+                                <div className="time-controls-section">
+                                    <h3>Chọn thời gian chơi</h3>
+                                    <div className="time-controls-grid">
+                                        <div 
+                                            className={`time-card ${matchType === 'bullet' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('bullet')}
+                                        >
+                                            <span className="time-icon">⚡</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Bullet</span>
+                                                <span className="time-duration">1 phút</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`time-card ${matchType === 'blitz' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('blitz')}
+                                        >
+                                            <span className="time-icon">🔥</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Blitz</span>
+                                                <span className="time-duration">3 phút</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`time-card ${matchType === 'rapid' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('rapid')}
+                                        >
+                                            <span className="time-icon">⏱️</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Rapid</span>
+                                                <span className="time-duration">10 phút</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className={`time-card ${matchType === 'classical' ? 'active' : ''}`} 
+                                            onClick={() => setMatchType('classical')}
+                                        >
+                                            <span className="time-icon">🏆</span>
+                                            <div className="time-info">
+                                                <span className="time-name">Classical</span>
+                                                <span className="time-duration">30 phút</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="lobby-actions-section">
+                                    <button onClick={joinMatchmaking} className="lobby-primary-btn">
+                                        🚀 Tìm đối thủ ngẫu nhiên
+                                    </button>
+
+                                    <div className="lobby-separator">
+                                        <span>HOẶC</span>
+                                    </div>
+
+                                    <div className="lobby-private-actions">
+                                        <button onClick={handleCreateRoom} className="lobby-secondary-btn">
+                                            🏠 Tạo phòng riêng
+                                        </button>
+                                        <div className="lobby-join-group">
+                                            <input
+                                                type="text"
+                                                className="lobby-input"
+                                                placeholder="Mã phòng..."
+                                                value={joinRoomCode}
+                                                onChange={(e) => setJoinRoomCode(e.target.value.toUpperCase())}
+                                            />
+                                            <button onClick={handleJoinRoom} className="lobby-join-btn">
+                                                Vào phòng
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button onClick={() => setIsLobbyOpen(false)} className="lobby-back-btn">
+                                    Quay lại Menu
+                                </button>
+                            </div>
+                        )}
+
+                        {matchState === 'SEARCHING' && (
+                            <div className="lobby-modal-content searching-content">
+                                <div className="lobby-spinner-container">
+                                    <div className="lobby-pulse-ring"></div>
+                                    <div className="lobby-spinner"></div>
+                                    <span className="lobby-search-icon">🔍</span>
+                                </div>
+                                <h2 className="searching-title">Đang tìm trận đấu...</h2>
+                                <p className="searching-status">{status}</p>
+                                
+                                {roomCode && (
+                                    <div className="lobby-room-code-box">
+                                        <span className="room-label">MÃ PHÒNG CỦA BẠN:</span>
+                                        <h1 className="room-code">{roomCode}</h1>
+                                        <p className="room-desc">Hãy gửi mã này cho bạn bè để cùng chơi!</p>
+                                    </div>
+                                )}
+
+                                <button onClick={cancelSearch} className="lobby-cancel-btn">
+                                    Hủy tìm kiếm
+                                </button>
+                            </div>
+                        )}
+
+                        {matchState === 'FOUND' && (
+                            <div className="lobby-modal-content found-content">
+                                <div className="match-found-badge">
+                                    <span>ĐÃ TÌM THẤY TRẬN!</span>
+                                </div>
+                                
+                                <div className="opponent-card">
+                                    <div className="opponent-avatar">👤</div>
+                                    <div className="opponent-details">
+                                        <h2 className="opponent-name">{opponent?.name}</h2>
+                                        <p className="opponent-stats">🌍 {opponent?.country} • ⭐ Hệ số: {opponent?.rating}</p>
+                                    </div>
+                                </div>
+
+                                {!hasAccepted ? (
+                                    <div className="lobby-decision-group">
+                                        <button onClick={handleAccept} className="lobby-accept-btn">
+                                            CHẤP NHẬN ({confirmCountdown}s)
+                                        </button>
+                                        <button onClick={handleReject} className="lobby-reject-btn">
+                                            TỪ CHỐI
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="lobby-waiting-opponent">
+                                        <div className="small-loader"></div>
+                                        <p>Đã chấp nhận! Đang chờ đối thủ xác nhận...</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                    </div>
+                </div>
+            )}
+
+            {/* AI Lobby Modal Overlay */}
+            {isAiLobbyOpen && (
+                <div className="lobby-modal-overlay">
+                    <div className="lobby-modal-card" style={{ maxWidth: '520px' }}>
+                        <div className="lobby-modal-content" style={{ padding: '30px 20px' }}>
+                            <div className="lobby-modal-header" style={{ textAlign: 'center', marginBottom: '25px' }}>
+                                <h2 style={{ fontSize: '1.8rem', color: 'white', fontWeight: 'bold' }}>🤖 Chơi với máy AI</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '5px' }}>
+                                    Thách đấu hệ thống mạng nơ-ron nhân tạo AlphaOne
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+                                {/* Side Selection */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Chọn quân cờ</span>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAiMode('human-white')}
+                                            className={aiMode === 'human-white' ? "lobby-primary-btn" : "lobby-secondary-btn"}
+                                            style={{ flex: 1, padding: '12px', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', border: aiMode === 'human-white' ? 'none' : '1px solid var(--glass-border)' }}
+                                        >
+                                            ⚪ Trắng đi trước
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAiMode('human-black')}
+                                            className={aiMode === 'human-black' ? "lobby-primary-btn" : "lobby-secondary-btn"}
+                                            style={{ flex: 1, padding: '12px', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', border: aiMode === 'human-black' ? 'none' : '1px solid var(--glass-border)' }}
+                                        >
+                                            ⚫ Đen đi sau
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* AI Model Checkpoint */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Mô hình nơ-ron AI</span>
+                                    <select
+                                        value={selectedAiModel}
+                                        onChange={e => setSelectedAiModel(e.target.value)}
+                                        className="custom-input"
+                                        style={{ width: '100%', padding: '12px', fontSize: '0.95rem', borderRadius: '10px', background: 'rgba(0, 0, 0, 0.4)', color: 'white', border: '1px solid var(--glass-border)' }}
+                                    >
+                                        <option value="best_model">Mặc định (Khuyên dùng)</option>
+                                        {aiModels.map(m => (
+                                            <option key={`model-${m.key}`} value={m.key}>
+                                                {m.display || m.key}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* AI Difficulty */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Độ khó máy</span>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {[
+                                            { value: 1, label: 'Dễ (Level 1)' },
+                                            { value: 2, label: 'Thường (Level 2)' },
+                                            { value: 3, label: 'Khó (Level 3)' },
+                                            { value: 4, label: 'Bậc thầy (Level 4)' }
+                                        ].map(diffItem => (
+                                            <button
+                                                key={diffItem.value}
+                                                type="button"
+                                                onClick={() => setAiDifficulty(diffItem.value)}
+                                                className={aiDifficulty === diffItem.value ? "lobby-primary-btn" : "lobby-secondary-btn"}
+                                                style={{ padding: '12px', fontSize: '0.85rem', border: aiDifficulty === diffItem.value ? 'none' : '1px solid var(--glass-border)' }}
+                                            >
+                                                {diffItem.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleStartAiGame}
+                                    className="lobby-primary-btn"
+                                    style={{ padding: '15px', marginTop: '15px', fontSize: '1rem', width: '100%', fontWeight: 'bold', letterSpacing: '0.5px', background: 'linear-gradient(135deg, var(--accent-blue), #3b82f6)' }}
+                                >
+                                    Bắt đầu trận đấu 🏁
+                                </button>
+
+                                <button onClick={() => setIsAiLobbyOpen(false)} className="lobby-back-btn" style={{ marginTop: '10px' }}>
+                                    ← Quay lại Menu chính
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

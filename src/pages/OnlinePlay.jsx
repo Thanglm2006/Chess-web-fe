@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { socketClient } from '../services/SocketService';
 import { AuthService } from '../services/AuthService';
 import { FriendService } from '../services/FriendService';
+import Sidebar from '../components/Sidebar';
 import '../index.css';
 
 const MATCH_STATES = {
@@ -17,9 +18,11 @@ const MATCH_STATES = {
 };
 
 export default function OnlinePlay() {
+    const navigate = useNavigate();
     const location = useLocation();
     const initialMatchType = location.state?.matchType || 'rapid';
 
+    const [username, setUsername] = useState('User');
     const [matchState, setMatchState] = useState(MATCH_STATES.INITIALIZING);
     const [matchType, setMatchType] = useState(initialMatchType);
     const [status, setStatus] = useState('Initializing connection...');
@@ -59,11 +62,12 @@ export default function OnlinePlay() {
     const boardRef = useRef(null);
     const matchStateRef = useRef(MATCH_STATES.INITIALIZING);
     const sideRef = useRef('WHITE');
-    const navigate = useNavigate();
     const hasStarted = useRef(false);
     const confirmTimer = useRef(null);
     const initTimer = useRef(null);
     const clockTimer = useRef(null);
+    const selectedSquareRef = useRef(null);
+    const boardClickHandlerRef = useRef(null);
 
     useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
     useEffect(() => { sideRef.current = side; }, [side]);
@@ -79,33 +83,69 @@ export default function OnlinePlay() {
                 return;
             }
 
-            socketClient.addListener(handleSocketMessage);
-            setStatus('Connected. Select a mode.');
+            const payload = AuthService.parseToken(token);
+            if (payload) {
+                setUsername(payload.username || payload.sub || 'User');
+            }
 
-            // If redirected here with a friend invite
-            if (location.state?.inviteFriendId) {
+            socketClient.addListener(handleSocketMessage);
+
+            // 1. If gameStartMsg is passed from the Main Menu lobby modal redirect
+            if (location.state?.gameStartMsg) {
+                const msg = location.state.gameStartMsg;
+                setSide(msg.side);
+                setOpponent({
+                    id: msg.opponent,
+                    name: msg.opponentName || 'Opponent',
+                    rating: msg.opponentRating || 1200
+                });
+                setGameId(msg.gameId);
+                setWhiteTime(msg.timeLimit || 600);
+                setBlackTime(msg.timeLimit || 600);
+                setChatMessages([]);
+                setRematchOffered(false);
+                setRematchSent(false);
+                setMatchState(MATCH_STATES.PLAYING);
+                initBoard(msg.side, msg.fen, msg.gameId);
+            }
+            // 2. If redirected here with a friend invite
+            else if (location.state?.inviteFriendId) {
+                setMatchState(MATCH_STATES.SEARCHING);
+                setStatus('Inviting friend...');
                 setTimeout(() => {
-                    setStatus('Inviting friend...');
                     socketClient.send({
                         type: 'INVITE_FRIEND',
                         friendId: location.state.inviteFriendId,
                         matchType: location.state.matchType || 'rapid'
                     });
-                }, 1000);
-            } else {
-                // Check for active games or auto-join if necessary
+                }, 500);
+            }
+            // 3. Fallback: check if there's an active game on backend
+            else {
                 const userData = AuthService.parseToken(token);
                 if (userData) {
                     setStatus('Checking for active games...');
-                    initTimer.current = setTimeout(() => {
-                        if (matchStateRef.current === MATCH_STATES.INITIALIZING) {
-                             // Only auto-join if we weren't just redirected with an invite
-                             // Actually, let's just stay in INITIALIZING and wait for user to click "Find Match"
-                             // unless the user specifically wants auto-matchmaking.
-                             // For now, let's keep it manual to avoid confusion.
-                             setStatus('Connected. Select a mode.');
+                    try {
+                        const response = await api.get(`/api/game/active?userId=${userData.userId}`);
+                        if (response.status === 200 && response.data) {
+                            // Active game exists. Give RECONNECT_GAME socket message 1.5s to arrive
+                            initTimer.current = setTimeout(() => {
+                                if (matchStateRef.current === MATCH_STATES.INITIALIZING) {
+                                    console.log("No active game socket state found, redirecting to menu...");
+                                    navigate('/menu', { state: { openLobby: true } });
+                                }
+                            }, 1500);
+                        } else {
+                            // No active game, redirect back to menu to open lobby modal
+                            console.log("No active game found on backend, redirecting to menu lobby...");
+                            navigate('/menu', { state: { openLobby: true } });
                         }
-                    }, 1500);
+                    } catch (e) {
+                        console.error("Active game check failed", e);
+                        navigate('/menu', { state: { openLobby: true } });
+                    }
+                } else {
+                    navigate('/menu', { state: { openLobby: true } });
                 }
             }
         };
@@ -118,6 +158,11 @@ export default function OnlinePlay() {
             if (initTimer.current) clearTimeout(initTimer.current);
             if (clockTimer.current) clearInterval(clockTimer.current);
             hasStarted.current = false;
+
+            const boardEl = document.getElementById('board');
+            if (boardEl && boardClickHandlerRef.current) {
+                boardEl.removeEventListener('click', boardClickHandlerRef.current);
+            }
         };
     }, [location, navigate]);
 
@@ -362,6 +407,75 @@ export default function OnlinePlay() {
                 gameRef.current = new window.Chess(initialFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
                 setCurrentTurn(gameRef.current.turn());
 
+                const clearHighlights = () => {
+                    document.querySelectorAll('#board .highlight-square').forEach(el => {
+                        el.classList.remove('highlight-square');
+                    });
+                    document.querySelectorAll('#board .highlight-square-selected').forEach(el => {
+                        el.classList.remove('highlight-square-selected');
+                    });
+                };
+
+                const handleBoardClick = (event) => {
+                    if (matchStateRef.current !== MATCH_STATES.PLAYING) return;
+                    if (!gameRef.current || !boardRef.current) return;
+
+                    const clickedSquareEl = event.target.closest('[data-square]');
+                    if (!clickedSquareEl) return;
+
+                    const square = clickedSquareEl.getAttribute('data-square');
+
+                    // Check turn
+                    const turn = gameRef.current.turn(); // 'w' or 'b'
+                    const playerChar = playerSide.toLowerCase().startsWith('w') ? 'w' : 'b';
+                    if (turn !== playerChar) return;
+
+                    const piece = gameRef.current.get(square);
+
+                    // If clicked own piece, select it and highlight legal moves
+                    if (piece && piece.color === playerChar) {
+                        clearHighlights();
+                        selectedSquareRef.current = square;
+
+                        clickedSquareEl.classList.add('highlight-square-selected');
+
+                        const moves = gameRef.current.moves({ square: square, verbose: true });
+                        moves.forEach(m => {
+                            const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+                            if (destEl) {
+                                destEl.classList.add('highlight-square');
+                            }
+                        });
+                    } else if (selectedSquareRef.current) {
+                        // Try to move
+                        const source = selectedSquareRef.current;
+                        let move = gameRef.current.move({
+                            from: source,
+                            to: square,
+                            promotion: 'q'
+                        });
+
+                        clearHighlights();
+                        selectedSquareRef.current = null;
+
+                        if (move !== null) {
+                            // Redraw board instantly
+                            boardRef.current.position(gameRef.current.fen());
+                            
+                            setCurrentTurn(gameRef.current.turn());
+
+                            const promo = move.promotion ? move.promotion : '';
+                            const moveCoords = (move.from + move.to + promo).toUpperCase();
+
+                            socketClient.send({
+                                type: 'MOVE',
+                                gameId: activeGameId,
+                                move: moveCoords
+                            });
+                        }
+                    }
+                };
+
                 const onDragStart = (source, piece) => {
                     if (matchStateRef.current !== MATCH_STATES.PLAYING) return false;
 
@@ -372,12 +486,32 @@ export default function OnlinePlay() {
                     if ((playerChar === 'w' && piece.search(/^b/) !== -1) ||
                         (playerChar === 'b' && piece.search(/^w/) !== -1)) return false;
 
+                    // Select this square and show legal moves during drag
+                    clearHighlights();
+                    selectedSquareRef.current = source;
+
+                    const sourceEl = document.querySelector(`#board [data-square="${source}"]`);
+                    if (sourceEl) {
+                        sourceEl.classList.add('highlight-square-selected');
+                    }
+
+                    const moves = gameRef.current.moves({ square: source, verbose: true });
+                    moves.forEach(m => {
+                        const destEl = document.querySelector(`#board [data-square="${m.to}"]`);
+                        if (destEl) {
+                            destEl.classList.add('highlight-square');
+                        }
+                    });
+
                     return true;
                 };
 
                 const onDrop = (source, target) => {
                     let move = gameRef.current.move({ from: source, to: target, promotion: 'q' });
                     if (move === null) return 'snapback';
+
+                    clearHighlights();
+                    selectedSquareRef.current = null;
 
                     setCurrentTurn(gameRef.current.turn());
 
@@ -398,10 +532,22 @@ export default function OnlinePlay() {
                     onDragStart: onDragStart,
                     onDrop: onDrop,
                     onSnapEnd: () => boardRef.current.position(gameRef.current.fen()),
+                    moveSpeed: 'fast',
+                    snapbackSpeed: 150,
+                    snapSpeed: 100,
                     pieceTheme: '/chessPieces/{piece}.png'
                 };
 
                 boardRef.current = window.Chessboard('board', config);
+
+                // Register event listeners
+                if (boardEl) {
+                    if (boardClickHandlerRef.current) {
+                        boardEl.removeEventListener('click', boardClickHandlerRef.current);
+                    }
+                    boardClickHandlerRef.current = handleBoardClick;
+                    boardEl.addEventListener('click', handleBoardClick);
+                }
             }
         }, 50);
     };
@@ -474,21 +620,8 @@ export default function OnlinePlay() {
     const oppTime = side.toLowerCase().startsWith('w') ? blackTime : whiteTime;
 
     return (
-        <div className="container">
-            <header>
-                <h1>Online <span>Match</span>
-                    {(matchState === MATCH_STATES.PLAYING || matchState === MATCH_STATES.COUNTDOWN) && (
-                        <span style={{ fontSize: '1rem', marginLeft: '20px', color: isMyTurn() ? '#4ade80' : '#f87171' }}>
-                            {isMyTurn() ? "● YOUR MOVE" : "○ OPPONENT TURN"}
-                        </span>
-                    )}
-                    {matchState === MATCH_STATES.OVER && (
-                        <span style={{ fontSize: '1rem', marginLeft: '20px', color: 'white' }}>
-                            ■ MATCH FINISHED
-                        </span>
-                    )}
-                </h1>
-            </header>
+        <div className="main-menu-wrapper">
+            <Sidebar username={username} />
 
             {/* Friend Invite Overlay */}
             {inviteReceived && (
@@ -518,14 +651,18 @@ export default function OnlinePlay() {
                 </div>
             )}
 
-            <div className="main-layout" style={{ justifyContent: 'center' }}>
-
-                {matchState === MATCH_STATES.PLAYING || matchState === MATCH_STATES.COUNTDOWN || matchState === MATCH_STATES.OVER ? (
-                    <>
-                        <div className="board-column" style={{ position: 'relative' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', padding: '0 10px' }}>
+            {matchState === MATCH_STATES.PLAYING || matchState === MATCH_STATES.COUNTDOWN || matchState === MATCH_STATES.OVER ? (
+                <>
+                    {/* Center Area (Chess Board) */}
+                    <div className="board-area">
+                        <div className="board-container" style={{ position: 'relative' }}>
+                            {/* Opponent Info Bar */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ fontWeight: 'bold' }}>{opponent?.name || 'Opponent'}</div>
+                                    <div className="avatar-small" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}><span className="icon">👤</span></div>
+                                    <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
+                                        {opponent?.name || 'Opponent'}
+                                    </span>
                                     {matchState === MATCH_STATES.PLAYING && (
                                         <button
                                             onClick={handleAddFriend}
@@ -535,226 +672,204 @@ export default function OnlinePlay() {
                                             {friendRequestSent ? "✓ Requested" : "+ Add Friend"}
                                         </button>
                                     )}
-                                    <div style={{ background: 'rgba(0,0,0,0.5)', padding: '5px 10px', borderRadius: '5px', fontFamily: 'monospace', fontSize: '1.2rem', color: !isMyTurn() ? '#f87171' : 'white' }}>
-                                        {formatTime(oppTime)}
-                                    </div>
+                                </div>
+                                <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '1.2rem', color: !isMyTurn() ? '#f87171' : 'white', fontWeight: 'bold' }}>
+                                    {formatTime(oppTime)}
                                 </div>
                             </div>
 
-                            <div id="board" style={{ width: '600px' }}></div>
+                            {/* Chess Board element */}
+                            <div id="board" className="chess-board-wrapper" style={{ width: '100%', aspectRatio: '1/1', boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}></div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', padding: '0 10px' }}>
+                            {/* Your Info Bar */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ fontWeight: 'bold' }}>You</div>
-                                    <div style={{ background: 'rgba(0,0,0,0.5)', padding: '5px 10px', borderRadius: '5px', fontFamily: 'monospace', fontSize: '1.2rem', color: isMyTurn() ? '#4ade80' : 'white' }}>
-                                        {formatTime(myTime)}
-                                    </div>
+                                    <div className="avatar-small" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}><span className="icon">👤</span></div>
+                                    <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                                        {username} <span className="flag">🇻🇳</span>
+                                    </span>
+                                </div>
+                                <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '1.2rem', color: isMyTurn() ? '#4ade80' : 'white', fontWeight: 'bold' }}>
+                                    {formatTime(myTime)}
                                 </div>
                             </div>
 
+                            {/* Countdown overlay */}
                             {matchState === MATCH_STATES.COUNTDOWN && (
-                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.8)', padding: '20px 40px', borderRadius: '15px', backdropFilter: 'blur(10px)', border: '2px solid var(--accent-purple)', zIndex: 10 }}>
-                                    <h1 style={{ fontSize: '4rem', margin: 0, color: 'white' }}>{countdown}</h1>
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(8,10,15,0.85)', padding: '20px 40px', borderRadius: '16px', backdropFilter: 'blur(10px)', border: '1px solid var(--accent-purple)', zIndex: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                                    <h1 style={{ fontSize: '4rem', margin: 0, color: 'white', textShadow: '0 0 10px rgba(167,139,250,0.5)' }}>{countdown}</h1>
                                 </div>
                             )}
 
+                            {/* Game Over overlay */}
                             {matchState === MATCH_STATES.OVER && (
-                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0,0,0,0.85)', padding: '30px 40px', borderRadius: '15px', backdropFilter: 'blur(10px)', border: '2px solid var(--accent-blue)', zIndex: 10, textAlign: 'center', minWidth: '350px' }}>
-                                    <h1 style={{ fontSize: '2.5rem', margin: '0 0 10px 0', color: 'white' }}>GAME OVER</h1>
-                                    <p style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-muted)' }}>{status}</p>
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(8,10,15,0.9)', padding: '30px 40px', borderRadius: '20px', backdropFilter: 'blur(12px)', border: '1px solid var(--accent-blue)', zIndex: 10, textAlign: 'center', minWidth: '350px', boxShadow: '0 15px 40px rgba(0,0,0,0.6)' }}>
+                                    <h1 style={{ fontSize: '2.2rem', margin: '0 0 10px 0', color: 'white', letterSpacing: '1px' }}>VÁN ĐẤU KẾT THÚC</h1>
+                                    <p style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>{status}</p>
 
                                     <div style={{ marginTop: '20px' }}>
                                         {rematchOffered ? (
                                             <div>
-                                                <p style={{ color: '#4ade80', marginBottom: '10px' }}>Opponent offered a rematch!</p>
-                                                <button onClick={handleAcceptRematch} className="primary-btn">Accept Rematch</button>
+                                                <p style={{ color: '#4ade80', marginBottom: '10px', fontWeight: 'bold' }}>Đối thủ muốn đấu lại!</p>
+                                                <button onClick={handleAcceptRematch} className="primary-btn" style={{ width: '100%' }}>Chấp nhận đấu lại</button>
                                             </div>
                                         ) : (
                                             rematchSent ? (
-                                                <p style={{ color: 'var(--text-muted)' }}>Rematch offer sent...</p>
+                                                <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Đã gửi lời mời đấu lại...</p>
                                             ) : (
-                                                <button onClick={handleOfferRematch} className="primary-btn">Offer Rematch</button>
+                                                <button onClick={handleOfferRematch} className="primary-btn" style={{ width: '100%' }}>Yêu cầu đấu lại</button>
                                             )
                                         )}
                                     </div>
-                                    <button onClick={() => navigate('/menu')} className="secondary-btn" style={{ marginTop: '10px' }}>Leave Match</button>
+                                    <button onClick={() => navigate('/menu')} className="secondary-btn" style={{ marginTop: '10px', width: '100%' }}>Rời phòng</button>
                                 </div>
                             )}
                         </div>
+                    </div>
 
-                        {/* Right Dashboard */}
-                        <div className="dashboard-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div className="glass-panel" style={{ minWidth: '320px' }}>
-                                <h2>{opponent?.name || 'Opponent'}</h2>
-                                <div className="stat-box">
-                                    <span>Opponent Rating</span>
-                                    <strong>{opponent?.rating || '1200'}</strong>
-                                </div>
-                                <div className="stat-box">
-                                    <span>Your Side</span>
-                                    <strong>{side}</strong>
-                                </div>
-                                <div className="stat-box">
-                                    <span>Status</span>
-                                    <strong style={{ color: matchState === MATCH_STATES.OVER ? 'white' : (isMyTurn() ? '#4ade80' : '#f87171') }}>
-                                        {matchState === MATCH_STATES.PLAYING
-                                            ? (isMyTurn() ? "YOUR MOVE" : "WAITING...")
-                                            : (matchState === MATCH_STATES.OVER ? "FINISHED" : "GET READY")
-                                        }
-                                    </strong>
-                                </div>
+                    {/* Right Panel (Dashboard) */}
+                    <div className="right-panel">
+                        <div className="glass-panel" style={{ width: '100%', marginBottom: '20px', boxSizing: 'border-box' }}>
+                            <h2 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--text-primary)' }}>📊 Chi tiết trận đấu</h2>
+                            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Đối thủ</span>
+                                <strong style={{ color: 'var(--accent-blue)', fontSize: '0.9rem' }}>{opponent?.name || 'Opponent'}</strong>
                             </div>
-
-                            {/* Chat Panel */}
-                            <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <h3>In-Game Chat</h3>
-                                <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '10px', overflowY: 'auto', maxHeight: '200px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                    {chatMessages.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Say hi...</span>}
-                                    {chatMessages.map((msg, idx) => (
-                                        <div key={idx} style={{ textAlign: msg.sender === 'You' ? 'right' : 'left' }}>
-                                            <span style={{ fontSize: '0.8rem', color: msg.sender === 'You' ? '#4ade80' : 'var(--accent-blue)', fontWeight: 'bold' }}>{msg.sender}: </span>
-                                            <span style={{ fontSize: '0.9rem' }}>{msg.text}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                    <input
-                                        type="text"
-                                        className="custom-input"
-                                        value={chatInput}
-                                        onChange={(e) => setChatInput(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
-                                        placeholder="Message..."
-                                        style={{ flex: 1, padding: '8px' }}
-                                    />
-                                    <button onClick={handleSendChat} className="primary-btn" style={{ padding: '8px 15px' }}>Send</button>
-                                </div>
+                            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Hệ số đối thủ</span>
+                                <strong style={{ fontSize: '0.9rem' }}>⭐ {opponent?.rating || '1200'}</strong>
                             </div>
-
-                            {/* Game Actions Panel */}
-                            {matchState === MATCH_STATES.PLAYING && (
-                                <div className="glass-panel" style={{ marginTop: 'auto' }}>
-                                    <h3>Game Actions</h3>
-                                    <div className="btn-group" style={{ marginTop: '10px' }}>
-                                        <button
-                                            onClick={handleOfferDraw}
-                                            className="secondary-btn"
-                                            disabled={drawOfferSent}
-                                            style={{ opacity: drawOfferSent ? 0.5 : 1 }}
-                                        >
-                                            {drawOfferSent ? "Draw Offered" : "Offer Draw"}
-                                        </button>
-                                        <button onClick={handleResign} className="secondary-btn" style={{ color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)' }}>Resign</button>
-                                    </div>
-                                </div>
-                            )}
+                            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Quân cờ của bạn</span>
+                                <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{side === 'WHITE' ? 'Trắng ⚪' : 'Đen ⚫'}</strong>
+                            </div>
+                            <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0' }}>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Trạng thái</span>
+                                <strong style={{ fontSize: '0.9rem', color: matchState === MATCH_STATES.OVER ? 'white' : (isMyTurn() ? '#4ade80' : '#f87171') }}>
+                                    {matchState === MATCH_STATES.PLAYING
+                                        ? (isMyTurn() ? "LƯỢT CỦA BẠN" : "ĐANG CHỜ...")
+                                        : (matchState === MATCH_STATES.OVER ? "KẾT THÚC" : "CHUẨN BỊ")
+                                    }
+                                </strong>
+                            </div>
                         </div>
-                    </>
-                ) : (
-                    <div className="glass-panel" style={{ width: '450px', textAlign: 'center', padding: '40px' }}>
 
-                        {matchState === MATCH_STATES.INITIALIZING && (
-                            <div>
-                                <h2 style={{ marginBottom: '30px' }}>Play Online</h2>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                                        <select
-                                            value={matchType}
-                                            onChange={(e) => setMatchType(e.target.value)}
-                                            className="custom-input"
-                                            style={{ padding: '10px', fontSize: '1rem', width: '200px', textAlign: 'center' }}
-                                        >
-                                            <option value="bullet">Bullet (1 min)</option>
-                                            <option value="blitz">Blitz (3 min)</option>
-                                            <option value="rapid">Rapid (10 min)</option>
-                                            <option value="classical">Classical (30 min)</option>
-                                        </select>
+                        {/* In-Game Chat */}
+                        <div className="glass-panel" style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', marginBottom: '20px' }}>
+                            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem' }}>💬 Trò chuyện</h3>
+                            <div style={{ flex: 1, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', padding: '10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {chatMessages.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', marginTop: '10px' }}>Gửi lời chào tới đối thủ...</span>}
+                                {chatMessages.map((msg, idx) => (
+                                    <div key={idx} style={{ alignSelf: msg.sender === 'You' ? 'flex-end' : 'flex-start', background: msg.sender === 'You' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)', border: '1px solid', borderColor: msg.sender === 'You' ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '10px', maxWidth: '85%' }}>
+                                        <span style={{ fontSize: '0.75rem', display: 'block', color: msg.sender === 'You' ? '#60a5fa' : 'var(--text-muted)', fontWeight: 'bold', marginBottom: '2px' }}>{msg.sender === 'You' ? 'Bạn' : msg.sender}</span>
+                                        <span style={{ fontSize: '0.85rem', wordBreak: 'break-word', color: 'var(--text-primary)' }}>{msg.text}</span>
                                     </div>
-                                    <button onClick={joinMatchmaking} className="primary-btn" style={{ padding: '15px' }}>Find Random Opponent</button>
+                                ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                <input
+                                    type="text"
+                                    className="custom-input"
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
+                                    placeholder="Nhập tin nhắn..."
+                                    style={{ flex: 1, padding: '10px', fontSize: '0.85rem' }}
+                                />
+                                <button onClick={handleSendChat} className="primary-btn" style={{ padding: '0 15px', fontSize: '0.85rem' }}>Gửi</button>
+                            </div>
+                        </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
-                                        <hr style={{ flex: 1, borderColor: 'var(--glass-border)' }} />
-                                        <span style={{ margin: '0 10px', color: 'var(--text-muted)' }}>OR</span>
-                                        <hr style={{ flex: 1, borderColor: 'var(--glass-border)' }} />
-                                    </div>
-
-                                    <button onClick={handleCreateRoom} className="secondary-btn">Create Private Room</button>
-
-                                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                        <input
-                                            type="text"
-                                            className="custom-input"
-                                            placeholder="Room Code"
-                                            value={joinRoomCode}
-                                            onChange={(e) => setJoinRoomCode(e.target.value.toUpperCase())}
-                                        />
-                                        <button onClick={handleJoinRoom} className="secondary-btn" style={{ flex: 1 }}>Join Room</button>
-                                    </div>
-                                    <h2 style={{ color: 'var(--text-muted)', marginTop: '20px' }}>{status}</h2>
+                        {/* In-Game Actions */}
+                        {matchState === MATCH_STATES.PLAYING && (
+                            <div className="glass-panel" style={{ width: '100%', boxSizing: 'border-box' }}>
+                                <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem' }}>⚙️ Hành động</h3>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        onClick={handleOfferDraw}
+                                        className="secondary-btn"
+                                        disabled={drawOfferSent}
+                                        style={{ flex: 1, padding: '12px', fontSize: '0.85rem', opacity: drawOfferSent ? 0.5 : 1 }}
+                                    >
+                                        {drawOfferSent ? "Đã cầu hòa" : "Cầu hòa 🤝"}
+                                    </button>
+                                    <button 
+                                        onClick={handleResign} 
+                                        className="secondary-btn" 
+                                        style={{ flex: 1, padding: '12px', fontSize: '0.85rem', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)' }}
+                                    >
+                                        Đầu hàng 🏳️
+                                    </button>
                                 </div>
-                                <button onClick={() => navigate('/menu')} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', marginTop: '30px', fontWeight: 'bold' }}>Back</button>
                             </div>
                         )}
-
+                    </div>
+                </>
+            ) : (
+                /* Non-playing central area (e.g. friend invite pending) */
+                <div className="board-area">
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '480px', textAlign: 'center', padding: '40px 30px', borderRadius: '24px' }}>
                         {matchState === MATCH_STATES.SEARCHING && (
                             <div className="searching-ui">
-                                <div className="loader" style={{ marginBottom: '20px' }}></div>
-                                <h2>{status}</h2>
+                                <div className="lobby-spinner-container" style={{ margin: '0 auto 25px' }}>
+                                    <div className="lobby-pulse-ring"></div>
+                                    <div className="lobby-spinner"></div>
+                                    <span className="lobby-search-icon">🔍</span>
+                                </div>
+                                <h2 style={{ fontSize: '1.5rem', marginBottom: '10px', color: 'white' }}>Đang kết nối trận đấu</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '20px' }}>{status}</p>
+                                
                                 {roomCode && (
-                                    <div style={{ margin: '20px 0', padding: '15px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px' }}>
-                                        <span style={{ color: 'var(--text-muted)' }}>Room Code:</span>
-                                        <h1 style={{ letterSpacing: '5px', margin: '10px 0', color: 'var(--accent-purple)' }}>{roomCode}</h1>
-                                        <span style={{ fontSize: '0.9rem' }}>Share this code with your friend.</span>
+                                    <div className="lobby-room-code-box" style={{ margin: '15px 0' }}>
+                                        <span className="room-label">MÃ PHÒNG:</span>
+                                        <h1 className="room-code">{roomCode}</h1>
+                                        <p className="room-desc">Chia sẻ mã này với bạn bè để mời chơi!</p>
                                     </div>
                                 )}
+
                                 <button onClick={() => {
                                     setMatchState(MATCH_STATES.INITIALIZING);
                                     setRoomCode('');
                                     socketClient.send({ type: 'LEAVE_QUEUE' });
-                                }} className="secondary-btn" style={{ marginTop: '20px' }}>Cancel Search</button>
+                                    navigate('/menu');
+                                }} className="lobby-cancel-btn" style={{ marginTop: '20px', width: '100%' }}>Hủy lời mời</button>
                             </div>
                         )}
 
                         {matchState === MATCH_STATES.FOUND && (
                             <div className="found-ui">
-                                <h2 style={{ color: 'var(--accent-blue-hover)' }}>Match Found!</h2>
-                                <div style={{ margin: '20px 0', padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
-                                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>{opponent?.name}</div>
-                                    <div style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>{opponent?.country || 'Earth'} • Rating: {opponent?.rating}</div>
+                                <div className="match-found-badge">ĐÃ TÌM THẤY TRẬN!</div>
+                                <div className="opponent-card" style={{ margin: '20px 0' }}>
+                                    <div className="opponent-avatar">👤</div>
+                                    <div className="opponent-details">
+                                        <h2 className="opponent-name">{opponent?.name}</h2>
+                                        <p className="opponent-stats">🌍 {opponent?.country || 'Earth'} • ⭐ Rating: {opponent?.rating}</p>
+                                    </div>
                                 </div>
                                 {!hasAccepted ? (
-                                    <div className="btn-group">
-                                        <button onClick={handleAccept} className="primary-btn">ACCEPT ({confirmCountdown}s)</button>
-                                        <button onClick={handleReject} className="secondary-btn">REJECT</button>
+                                    <div className="lobby-decision-group">
+                                        <button onClick={handleAccept} className="lobby-accept-btn">CHẤP NHẬN ({confirmCountdown}s)</button>
+                                        <button onClick={handleReject} className="lobby-reject-btn">TỪ CHỐI</button>
                                     </div>
                                 ) : (
-                                    <p>Accepted! Waiting for {opponent?.name} to confirm...</p>
+                                    <div className="lobby-waiting-opponent">
+                                        <div className="small-loader"></div>
+                                        <p>Đã chấp nhận! Đang chờ đối thủ xác nhận...</p>
+                                    </div>
                                 )}
                             </div>
                         )}
 
                         {matchState === MATCH_STATES.CANCELLED && (
                             <div className="cancelled-ui">
-                                <h2 style={{ color: '#f87171' }}>Match Invalidated</h2>
-                                <p style={{ margin: '10px 0' }}>{status}</p>
+                                <h2 style={{ color: '#f87171', fontSize: '1.5rem', marginBottom: '10px' }}>Trận đấu đã bị hủy</h2>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '30px' }}>{status}</p>
+                                <button onClick={() => navigate('/menu')} className="primary-btn" style={{ width: '100%' }}>Quay lại Menu</button>
                             </div>
                         )}
                     </div>
-                )}
-            </div>
-
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                .loader {
-                    border: 4px solid rgba(255,255,255,0.1);
-                    border-top: 4px solid var(--accent-blue);
-                    border-radius: 50%;
-                    width: 50px; height: 50px;
-                    animation: spin 1s linear infinite;
-                    margin: 0 auto;
-                }
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            `}} />
+                </div>
+            )}
         </div>
     );
 }
