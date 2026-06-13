@@ -21,6 +21,7 @@ export default function OnlinePlay() {
     const navigate = useNavigate();
     const location = useLocation();
     const initialMatchType = location.state?.matchType || 'rapid';
+    const isTournament = location.state?.gameStartMsg?.isTournament || false;
 
     const [username, setUsername] = useState('User');
     const [matchState, setMatchState] = useState(MATCH_STATES.INITIALIZING);
@@ -331,6 +332,11 @@ export default function OnlinePlay() {
             case 'GAME_OVER':
                 setMatchState(MATCH_STATES.OVER);
                 setStatus(`Finished: ${msg.reason} (${msg.result})`);
+                if (isTournament) {
+                    setTimeout(() => {
+                        navigate('/tournaments');
+                    }, 5000); // 5 seconds to let them see the final board
+                }
                 break;
 
             case 'DRAW_OFFERED':
@@ -707,21 +713,30 @@ export default function OnlinePlay() {
                                     <h1 style={{ fontSize: '2.2rem', margin: '0 0 10px 0', color: 'white', letterSpacing: '1px' }}>VÁN ĐẤU KẾT THÚC</h1>
                                     <p style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>{status}</p>
 
-                                    <div style={{ marginTop: '20px' }}>
-                                        {rematchOffered ? (
-                                            <div>
-                                                <p style={{ color: '#4ade80', marginBottom: '10px', fontWeight: 'bold' }}>Đối thủ muốn đấu lại!</p>
-                                                <button onClick={handleAcceptRematch} className="primary-btn" style={{ width: '100%' }}>Chấp nhận đấu lại</button>
+                                    {isTournament ? (
+                                        <div style={{ marginTop: '20px' }}>
+                                            <p style={{ color: '#fbbf24', fontSize: '0.9rem', marginBottom: '10px' }}>⌛ Tự động quay lại bảng xếp hạng giải đấu...</p>
+                                            <button onClick={() => navigate('/tournaments')} className="primary-btn" style={{ width: '100%' }}>Quay lại Giải đấu</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{ marginTop: '20px' }}>
+                                                {rematchOffered ? (
+                                                    <div>
+                                                        <p style={{ color: '#4ade80', marginBottom: '10px', fontWeight: 'bold' }}>Đối thủ muốn đấu lại!</p>
+                                                        <button onClick={handleAcceptRematch} className="primary-btn" style={{ width: '100%' }}>Chấp nhận đấu lại</button>
+                                                    </div>
+                                                ) : (
+                                                    rematchSent ? (
+                                                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Đã gửi lời mời đấu lại...</p>
+                                                    ) : (
+                                                        <button onClick={handleOfferRematch} className="primary-btn" style={{ width: '100%' }}>Yêu cầu đấu lại</button>
+                                                    )
+                                                )}
                                             </div>
-                                        ) : (
-                                            rematchSent ? (
-                                                <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Đã gửi lời mời đấu lại...</p>
-                                            ) : (
-                                                <button onClick={handleOfferRematch} className="primary-btn" style={{ width: '100%' }}>Yêu cầu đấu lại</button>
-                                            )
-                                        )}
-                                    </div>
-                                    <button onClick={() => navigate('/menu')} className="secondary-btn" style={{ marginTop: '10px', width: '100%' }}>Rời phòng</button>
+                                            <button onClick={() => navigate('/menu')} className="secondary-btn" style={{ marginTop: '10px', width: '100%' }}>Rời phòng</button>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>

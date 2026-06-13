@@ -8,6 +8,9 @@ import OnlinePlay from './pages/OnlinePlay';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
 import Tournaments from './pages/Tournaments';
+import TournamentLobby from './pages/TournamentLobby';
+import TournamentBreak from './pages/TournamentBreak';
+import TournamentDetail from './pages/TournamentDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import Replay from './pages/Replay';
 import ReplayPage from './pages/ReplayPage';
@@ -111,6 +114,30 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Tournaments />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tournaments/detail/:tournamentId"
+                        element={
+                            <PrivateRoute>
+                                <TournamentDetail />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tournaments/lobby/:tournamentId"
+                        element={
+                            <PrivateRoute>
+                                <TournamentLobby />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tournaments/break/:tournamentId"
+                        element={
+                            <PrivateRoute>
+                                <TournamentBreak />
                             </PrivateRoute>
                         }
                     />

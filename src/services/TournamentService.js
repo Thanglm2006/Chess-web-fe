@@ -20,5 +20,9 @@ export const TournamentService = {
     getStandings: async (tournamentId) => {
         const response = await api.get(`/api/tournaments/${tournamentId}/standings`);
         return response.data;
+    },
+    getMyPairing: async (tournamentId) => {
+        const response = await api.get(`/api/tournaments/${tournamentId}/my-pairing`);
+        return response.data;
     }
 };

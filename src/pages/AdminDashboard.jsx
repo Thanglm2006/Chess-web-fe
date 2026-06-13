@@ -139,16 +139,6 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleStartTournament = async (tId) => {
-        try {
-            await AdminService.startTournament(tId);
-            alert("Giải đấu đã bắt đầu, Round 1 đã được tạo!");
-            loadTournaments();
-        } catch (err) {
-            alert(err.response?.data?.message || "Thất bại!");
-        }
-    };
-
     const handleFinishTournament = async (tId) => {
         try {
             await AdminService.finishTournament(tId);
@@ -409,15 +399,20 @@ export default function AdminDashboard() {
                                                 padding: '3px 8px',
                                                 borderRadius: '10px',
                                                 fontSize: '0.75rem',
-                                                background: t.status === 'REGISTERING' ? 'rgba(74, 222, 128, 0.2)' : t.status === 'ONGOING' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(139, 92, 246, 0.2)',
-                                                color: t.status === 'REGISTERING' ? '#4ade80' : t.status === 'ONGOING' ? '#60a5fa' : '#a78bfa'
-                                            }}>{t.status}</span>
+                                                background: t.status === 'REGISTERING' ? 'rgba(74, 222, 128, 0.2)' : 
+                                                            t.status === 'ONGOING' ? 'rgba(59, 130, 246, 0.2)' : 
+                                                            t.status === 'UPCOMING' ? 'rgba(6, 182, 212, 0.2)' : 
+                                                            t.status === 'REGISTRATION_CLOSED' ? 'rgba(156, 163, 175, 0.2)' : 
+                                                            'rgba(139, 92, 246, 0.2)',
+                                                color: t.status === 'REGISTERING' ? '#4ade80' : 
+                                                       t.status === 'ONGOING' ? '#60a5fa' : 
+                                                       t.status === 'UPCOMING' ? '#06b6d4' : 
+                                                       t.status === 'REGISTRATION_CLOSED' ? '#9ca3af' : 
+                                                       '#a78bfa'
+                                            }}>{t.status === "REGISTERING" ? "Mở đăng ký" : t.status === "ONGOING" ? "Đang diễn ra" : t.status === "UPCOMING" ? "Sắp diễn ra" : t.status === "REGISTRATION_CLOSED" ? "Đã đóng đăng ký" : t.status === "FINISHED" ? "Đã kết thúc" : t.status}</span>
                                         </div>
                                         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.description || 'Không có mô tả.'}</p>
                                         <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                                            {t.status === 'REGISTERING' && (
-                                                <button className="primary-btn" onClick={() => handleStartTournament(t.tournamentId)}>Bắt đầu giải</button>
-                                            )}
                                             {t.status === 'ONGOING' && (
                                                 <button className="primary-btn" style={{ background: '#8b5cf6' }} onClick={() => handleFinishTournament(t.tournamentId)}>Kết thúc giải</button>
                                             )}
