@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // Cho phép các thiết bị khác trong cùng Wi-Fi truy cập
+    allowedHosts: ['chess-fe.caelestial.store'],
     hmr: {
       protocol: 'ws',
     },
