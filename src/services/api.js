@@ -1,7 +1,20 @@
 import axios from 'axios';
 
+export const getApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_BASE_URL) {
+        return import.meta.env.VITE_API_BASE_URL;
+    }
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:8087';
+        }
+    }
+    return '';
+};
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8087',
+    baseURL: getApiBaseUrl(),
     withCredentials: true
 });
 
@@ -28,7 +41,7 @@ api.interceptors.response.use(
 
             try {
                 // Important: withCredentials true is needed to send the HttpOnly refreshToken cookie
-                const refreshResponse = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8087'}/api/auth/refresh`, {}, {
+                const refreshResponse = await axios.post(`${getApiBaseUrl()}/api/auth/refresh`, {}, {
                     withCredentials: true
                 });
 

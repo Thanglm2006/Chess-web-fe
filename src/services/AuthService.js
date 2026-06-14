@@ -1,5 +1,5 @@
 import axios from 'axios';
-import api from './api';
+import api, { getApiBaseUrl } from './api';
 
 const BASE_URL = '/api/auth';
 
@@ -12,7 +12,7 @@ export const AuthService = {
         return payload.exp < now;
     },
     refreshToken: async () => {
-        const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8087'}${BASE_URL}/refresh`, {}, {
+        const response = await axios.post(`${getApiBaseUrl()}${BASE_URL}/refresh`, {}, {
             withCredentials: true
         });
         return response.data;

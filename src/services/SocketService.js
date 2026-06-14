@@ -1,4 +1,5 @@
 import { AuthService } from "./AuthService";
+import { getApiBaseUrl } from "./api";
 export class SocketService {
     constructor() {
         this.socket = null;
@@ -43,7 +44,7 @@ export class SocketService {
         let wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
         try {
-            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+            const apiBaseUrl = getApiBaseUrl();
             if (apiBaseUrl) {
                 const url = new URL(apiBaseUrl);
                 wsHost = url.host;
