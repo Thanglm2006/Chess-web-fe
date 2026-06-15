@@ -121,7 +121,16 @@ export default function OnlinePlay() {
                     });
                 }, 500);
             }
-            // 3. Fallback: check if there's an active game on backend
+            // 3. If redirected here after accepting a friend invite
+            else if (location.state?.acceptInviteHostId) {
+                setMatchState(MATCH_STATES.SEARCHING);
+                setStatus('Accepting invitation...');
+                socketClient.send({
+                    type: 'ACCEPT_INVITE',
+                    hostId: location.state.acceptInviteHostId
+                });
+            }
+            // 4. Fallback: check if there's an active game on backend
             else {
                 const userData = AuthService.parseToken(token);
                 if (userData) {

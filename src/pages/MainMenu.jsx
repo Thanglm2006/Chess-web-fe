@@ -23,6 +23,7 @@ export default function MainMenu() {
     const [aiDifficulty, setAiDifficulty] = useState(3); // 1 = Easy, 2 = Medium, 3 = Hard, 4 = Expert
     const [aiModels, setAiModels] = useState([]);
     const [selectedAiModel, setSelectedAiModel] = useState('best_model');
+    const [inviteReceived, setInviteReceived] = useState(null);
 
     // Online Play Lobby Modal States
     const [isLobbyOpen, setIsLobbyOpen] = useState(false);
@@ -62,6 +63,8 @@ export default function MainMenu() {
                 navigate('/login');
                 return;
             }
+
+            socketClient.connect();
 
             const payload = AuthService.parseToken(token);
             if (payload) {
@@ -122,9 +125,11 @@ export default function MainMenu() {
                     setFriends(prev => prev.map(f => f.userId === msg.userId ? { ...f, status: 'ONLINE' } : f));
                 } else if (msg.type === 'USER_OFFLINE') {
                     setFriends(prev => prev.map(f => f.userId === msg.userId ? { ...f, status: 'OFFLINE' } : f));
+                } else if (msg.type === 'MATCH_INVITE') {
+                    setInviteReceived({ hostId: msg.hostId, hostName: msg.hostName });
                 }
             } catch (e) {
-                console.error("Presence update error", e);
+                console.error("Main menu socket update error", e);
             }
         };
 
@@ -276,6 +281,13 @@ export default function MainMenu() {
 
     const handleInvite = (friendId) => {
         navigate('/play-online', { state: { inviteFriendId: friendId, matchType: matchType } });
+    };
+
+    const handleAcceptInvite = () => {
+        if (!inviteReceived?.hostId) return;
+        const hostId = inviteReceived.hostId;
+        setInviteReceived(null);
+        navigate('/play-online', { state: { acceptInviteHostId: hostId } });
     };
 
     return (
@@ -625,6 +637,18 @@ export default function MainMenu() {
                                     ← Quay lại Menu chính
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {inviteReceived && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
+                    <div className="glass-panel" style={{ textAlign: 'center', padding: '30px' }}>
+                        <h2>Match Invitation!</h2>
+                        <p>{inviteReceived.hostName} has invited you to play.</p>
+                        <div className="btn-group" style={{ marginTop: '20px' }}>
+                            <button onClick={handleAcceptInvite} className="primary-btn">Accept</button>
+                            <button onClick={() => setInviteReceived(null)} className="secondary-btn">Reject</button>
                         </div>
                     </div>
                 </div>
