@@ -8,7 +8,7 @@ import '../index.css';
 
 export default function Tournaments() {
     const navigate = useNavigate();
-    const [username, setUsername] = useState('User');
+    const [username, setUsername] = useState('Người chơi');
     const [userId, setUserId] = useState(null);
     const [tournaments, setTournaments] = useState([]);
     const [listTab, setListTab] = useState('all'); // all, registering, ongoing, finished
@@ -22,7 +22,7 @@ export default function Tournaments() {
             }
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || 'User');
+                setUsername(payload.username || 'Người chơi');
                 setUserId(payload.userId);
             }
         };

@@ -8,7 +8,7 @@ import '../index.css';
 export default function Replay() {
     const navigate = useNavigate();
     const { gameId } = useParams();
-    const [username, setUsername] = useState('User');
+    const [username, setUsername] = useState('Người chơi');
     const [game, setGame] = useState(null);
     const [moves, setMoves] = useState([]);
     const [analysis, setAnalysis] = useState(null);
@@ -27,7 +27,7 @@ export default function Replay() {
             }
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || 'User');
+                setUsername(payload.username || 'Người chơi');
             }
 
             try {
@@ -60,7 +60,7 @@ export default function Replay() {
             } catch (err) {
                 console.error(err);
                 if (err.response?.status === 403) {
-                    setErrorMsg(err.response?.data?.message || "Tournament replay is available only after the tournament has finished.");
+                    setErrorMsg(err.response?.data?.message || "Replay trận đấu trong giải chỉ khả dụng sau khi giải đấu đã kết thúc hoàn toàn.");
                 } else {
                     setErrorMsg("Không thể tải thông tin ván đấu.");
                 }
@@ -153,7 +153,7 @@ export default function Replay() {
                         <h1>🎬 Replay ván đấu</h1>
                         {game && (
                             <p style={{ color: 'var(--text-muted)' }}>
-                                {game.whitePlayer?.username || 'Unknown'} vs {game.blackPlayer?.username || 'Unknown'} | Kết quả: {game.result || '*'}
+                                {game.whitePlayer?.username || 'Không rõ'} vs {game.blackPlayer?.username || 'Không rõ'} | Kết quả: {game.result || '*'}
                             </p>
                         )}
                     </div>

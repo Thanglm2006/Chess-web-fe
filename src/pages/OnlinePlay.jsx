@@ -23,10 +23,10 @@ export default function OnlinePlay() {
     const initialMatchType = location.state?.matchType || 'rapid';
     const isTournament = location.state?.gameStartMsg?.isTournament || false;
 
-    const [username, setUsername] = useState('User');
+    const [username, setUsername] = useState('Người chơi');
     const [matchState, setMatchState] = useState(MATCH_STATES.INITIALIZING);
     const [matchType, setMatchType] = useState(initialMatchType);
-    const [status, setStatus] = useState('Initializing connection...');
+    const [status, setStatus] = useState('Đang kết nối...');
     const [gameId, setGameId] = useState(null);
     const [side, setSide] = useState('WHITE');
     const [opponent, setOpponent] = useState(null);
@@ -86,7 +86,7 @@ export default function OnlinePlay() {
 
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || payload.sub || 'User');
+                setUsername(payload.username || payload.sub || 'Người chơi');
             }
 
             socketClient.addListener(handleSocketMessage);
@@ -97,7 +97,7 @@ export default function OnlinePlay() {
                 setSide(msg.side);
                 setOpponent({
                     id: msg.opponent,
-                    name: msg.opponentName || 'Opponent',
+                    name: msg.opponentName || 'Đối thủ',
                     rating: msg.opponentRating || 1200
                 });
                 setGameId(msg.gameId);
@@ -112,7 +112,7 @@ export default function OnlinePlay() {
             // 2. If redirected here with a friend invite
             else if (location.state?.inviteFriendId) {
                 setMatchState(MATCH_STATES.SEARCHING);
-                setStatus('Inviting friend...');
+                setStatus('Đang mời bạn...');
                 setTimeout(() => {
                     socketClient.send({
                         type: 'INVITE_FRIEND',
@@ -124,7 +124,7 @@ export default function OnlinePlay() {
             // 3. If redirected here after accepting a friend invite
             else if (location.state?.acceptInviteHostId) {
                 setMatchState(MATCH_STATES.SEARCHING);
-                setStatus('Accepting invitation...');
+                setStatus('Đang chấp nhận lời mời...');
                 socketClient.send({
                     type: 'ACCEPT_INVITE',
                     hostId: location.state.acceptInviteHostId
@@ -134,7 +134,7 @@ export default function OnlinePlay() {
             else {
                 const userData = AuthService.parseToken(token);
                 if (userData) {
-                    setStatus('Checking for active games...');
+                    setStatus('Đang kiểm tra ván đấu đang diễn ra...');
                     try {
                         const response = await api.get(`/api/game/active?userId=${userData.userId}`);
                         if (response.status === 200 && response.data) {
@@ -198,24 +198,24 @@ export default function OnlinePlay() {
     const joinMatchmaking = async () => {
         setMatchState(MATCH_STATES.SEARCHING);
         setHasAccepted(false);
-        setStatus('Searching for opponent...');
+        setStatus('Đang tìm đối thủ...');
         try {
             const token = await AuthService.getValidToken();
             const userData = AuthService.parseToken(token);
             await api.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
         } catch (err) {
-            setStatus('Matchmaking Error: ' + err.message);
+            setStatus('Lỗi ghép trận: ' + err.message);
         }
     };
 
     const handleCreateRoom = () => {
-        setStatus('Creating private room...');
+        setStatus('Đang tạo phòng riêng...');
         socketClient.send({ type: 'CREATE_ROOM', matchType: matchType });
     };
 
     const handleJoinRoom = () => {
         if (!joinRoomCode) return;
-        setStatus(`Joining room ${joinRoomCode}...`);
+        setStatus(`Đang vào phòng ${joinRoomCode}...`);
         socketClient.send({ type: 'JOIN_ROOM', code: joinRoomCode });
     };
 
@@ -226,7 +226,7 @@ export default function OnlinePlay() {
         switch (msg.type) {
             case 'ROOM_CREATED':
                 setRoomCode(msg.code);
-                setStatus('Waiting for opponent to join room: ' + msg.code);
+                setStatus('Đang chờ đối thủ vào phòng: ' + msg.code);
                 setMatchState(MATCH_STATES.SEARCHING);
                 break;
 
@@ -253,7 +253,7 @@ export default function OnlinePlay() {
                         try {
                             const c = JSON.parse(chatStr);
                             return {
-                                sender: c.senderId === myUser.userId ? 'You' : (c.senderName || 'Opponent'),
+                                sender: c.senderId === myUser.userId ? 'You' : (c.senderName || 'Đối thủ'),
                                 text: c.text
                             };
                         } catch (e) { return null; }
@@ -284,7 +284,7 @@ export default function OnlinePlay() {
                 setStatus(msg.reason);
                 setTimeout(() => {
                     setMatchState(MATCH_STATES.INITIALIZING);
-                    setStatus('Connected. Select a mode.');
+                    setStatus('Đã kết nối. Chọn chế độ chơi.');
                     // Don't auto-join here, let user decide
                 }, 2000);
                 break;
@@ -295,7 +295,7 @@ export default function OnlinePlay() {
                 setOpponent(prev => ({
                     ...prev,
                     id: msg.opponent || prev?.id,
-                    name: msg.opponentName || prev?.name || 'Opponent',
+                    name: msg.opponentName || prev?.name || 'Đối thủ',
                     rating: msg.opponentRating || prev?.rating || 1200
                 }));
                 setGameId(msg.gameId);
@@ -334,13 +334,13 @@ export default function OnlinePlay() {
                 if (boardRef.current && gameRef.current) {
                     boardRef.current.position(gameRef.current.fen());
                     setCurrentTurn(gameRef.current.turn());
-                    setStatus(msg.message || "Invalid move! Try again.");
+                    setStatus(msg.message || "Nước đi không hợp lệ! Hãy thử lại.");
                 }
                 break;
 
             case 'GAME_OVER':
                 setMatchState(MATCH_STATES.OVER);
-                setStatus(`Finished: ${msg.reason} (${msg.result})`);
+                setStatus(`Kết thúc: ${msg.reason === 'CHECKMATE' ? 'Chiếu bí' : msg.reason === 'RESIGNATION' ? 'Đầu hàng' : msg.reason === 'TIMEOUT' ? 'Hết giờ' : msg.reason === 'DRAW' ? 'Hòa' : msg.reason} (${msg.result === '1-0' ? 'Trắng thắng' : msg.result === '0-1' ? 'Đen thắng' : 'Hòa'})`);
                 if (isTournament) {
                     setTimeout(() => {
                         navigate('/tournaments');
@@ -353,13 +353,13 @@ export default function OnlinePlay() {
                 break;
 
             case 'DRAW_REJECTED':
-                setStatus("Draw offer rejected.");
+                setStatus("Lời cầu hòa bị từ chối.");
                 setDrawOfferSent(false);
-                setTimeout(() => setStatus(isMyTurn() ? "YOUR MOVE" : "WAITING..."), 2000);
+                setTimeout(() => setStatus(isMyTurn() ? "LƯỢT CỦA BẠN" : "ĐANG CHỜ..."), 2000);
                 break;
 
             case 'CHAT_MESSAGE':
-                setChatMessages(prev => [...prev, { sender: msg.senderName || 'Opponent', text: msg.text }]);
+                setChatMessages(prev => [...prev, { sender: msg.senderName || 'Đối thủ', text: msg.text }]);
                 break;
 
             case 'REMATCH_OFFERED':
@@ -395,7 +395,7 @@ export default function OnlinePlay() {
         if (confirmTimer.current) clearInterval(confirmTimer.current);
         socketClient.send({ type: 'REJECT_MATCH', gameId: gameId });
         setMatchState(MATCH_STATES.INITIALIZING);
-        setStatus('Connected. Select a mode.');
+        setStatus('Đã kết nối. Chọn chế độ chơi.');
     };
 
     const startStartCountdown = () => {
@@ -596,7 +596,7 @@ export default function OnlinePlay() {
     };
 
     const handleResign = () => {
-        if (window.confirm("Are you sure you want to resign?")) {
+        if (window.confirm("Bạn có chắc chắn muốn xin thua?")) {
             socketClient.send({ type: 'RESIGN', gameId: gameId });
         }
     };
@@ -604,7 +604,7 @@ export default function OnlinePlay() {
     const handleOfferDraw = () => {
         socketClient.send({ type: 'DRAW_OFFER', gameId: gameId });
         setDrawOfferSent(true);
-        setStatus("Draw offer sent...");
+        setStatus("Đã gửi lời cầu hòa...");
     };
 
     const handleDrawResponse = (accepted) => {
@@ -619,9 +619,9 @@ export default function OnlinePlay() {
             const userData = AuthService.parseToken(token);
             await FriendService.sendRequest(userData.userId, opponent.id);
             setFriendRequestSent(true);
-            setStatus("Friend request sent!");
+            setStatus("Đã gửi yêu cầu kết bạn!");
         } catch (err) {
-            setStatus(err.response?.data?.message || err.message || "Failed to send friend request.");
+            setStatus(err.response?.data?.message || err.message || "Không thể gửi yêu cầu kết bạn.");
         }
     };
 
@@ -642,11 +642,11 @@ export default function OnlinePlay() {
             {inviteReceived && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
                     <div className="glass-panel" style={{ textAlign: 'center', padding: '30px' }}>
-                        <h2>Match Invitation!</h2>
-                        <p>{inviteReceived.hostName} has invited you to play.</p>
+                        <h2>Lời mời đấu cờ!</h2>
+                        <p>{inviteReceived.hostName} đã mời bạn tham gia ván đấu.</p>
                         <div className="btn-group" style={{ marginTop: '20px' }}>
-                            <button onClick={handleAcceptInvite} className="primary-btn">Accept</button>
-                            <button onClick={() => setInviteReceived(null)} className="secondary-btn">Reject</button>
+                            <button onClick={handleAcceptInvite} className="primary-btn">Chấp nhận</button>
+                            <button onClick={() => setInviteReceived(null)} className="secondary-btn">Từ chối</button>
                         </div>
                     </div>
                 </div>
@@ -656,11 +656,11 @@ export default function OnlinePlay() {
             {drawOfferReceived && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
                     <div className="glass-panel" style={{ textAlign: 'center', padding: '30px' }}>
-                        <h2>Draw Offer</h2>
-                        <p>{opponent?.name} is offering a draw.</p>
+                        <h2>Lời cầu hòa</h2>
+                        <p>{opponent?.name} muốn cầu hòa.</p>
                         <div className="btn-group" style={{ marginTop: '20px' }}>
-                            <button onClick={() => handleDrawResponse(true)} className="primary-btn">Accept Draw</button>
-                            <button onClick={() => handleDrawResponse(false)} className="secondary-btn">Decline</button>
+                            <button onClick={() => handleDrawResponse(true)} className="primary-btn">Chấp nhận Hòa</button>
+                            <button onClick={() => handleDrawResponse(false)} className="secondary-btn">Từ chối</button>
                         </div>
                     </div>
                 </div>
@@ -676,7 +676,7 @@ export default function OnlinePlay() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div className="avatar-small" style={{ width: '32px', height: '32px', fontSize: '0.9rem' }}><span className="icon">👤</span></div>
                                     <span style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>
-                                        {opponent?.name || 'Opponent'}
+                                        {opponent?.name || 'Đối thủ'}
                                     </span>
                                     {matchState === MATCH_STATES.PLAYING && (
                                         <button
@@ -684,7 +684,7 @@ export default function OnlinePlay() {
                                             disabled={friendRequestSent}
                                             style={{ background: 'none', border: '1px solid var(--glass-border)', color: 'var(--accent-blue)', borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem', cursor: friendRequestSent ? 'default' : 'pointer', opacity: friendRequestSent ? 0.5 : 1 }}
                                         >
-                                            {friendRequestSent ? "✓ Requested" : "+ Add Friend"}
+                                            {friendRequestSent ? "✓ Đã gửi yêu cầu" : "+ Kết bạn"}
                                         </button>
                                     )}
                                 </div>
@@ -757,7 +757,7 @@ export default function OnlinePlay() {
                             <h2 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--text-primary)' }}>📊 Chi tiết trận đấu</h2>
                             <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Đối thủ</span>
-                                <strong style={{ color: 'var(--accent-blue)', fontSize: '0.9rem' }}>{opponent?.name || 'Opponent'}</strong>
+                                <strong style={{ color: 'var(--accent-blue)', fontSize: '0.9rem' }}>{opponent?.name || 'Đối thủ'}</strong>
                             </div>
                             <div className="stat-box" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Hệ số đối thủ</span>

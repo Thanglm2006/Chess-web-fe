@@ -53,7 +53,7 @@ export default function Login() {
                 navigate('/menu');
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Google login failed');
+            setError(err.response?.data?.message || 'Đăng nhập bằng Google thất bại');
         } finally {
             setLoading(false);
         }
@@ -69,10 +69,10 @@ export default function Login() {
                 localStorage.setItem('accessToken', data.token);
                 navigate('/menu');
             } else {
-                setError('Login failed. No token received.');
+                setError('Đăng nhập thất bại. Không nhận được token.');
             }
         } catch (err) {
-            setError(err.response?.data?.message || err.message || 'Login failed');
+            setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại');
         } finally {
             setLoading(false);
         }
@@ -127,9 +127,9 @@ export default function Login() {
         <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <header>
                 {forgotMode ? (
-                    <h1>Reset <span>Password</span></h1>
+                    <h1>Khôi phục <span>Mật khẩu</span></h1>
                 ) : (
-                    <h1>Chess <span>Login</span></h1>
+                    <h1>Đăng nhập <span>Cờ vua</span></h1>
                 )}
             </header>
             <div className="glass-panel" style={{ width: '400px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -138,7 +138,7 @@ export default function Login() {
                     /* LOGIN MODE */
                     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div className="control-group">
-                            <label>Email or Username</label>
+                            <label>Email hoặc Tên đăng nhập</label>
                             <input 
                                 type="text" 
                                 style={inputStyle}
@@ -150,13 +150,13 @@ export default function Login() {
 
                         <div className="control-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                <label style={{ flexGrow: 1 }}>Password</label>
+                                <label style={{ flexGrow: 1 }}>Mật khẩu</label>
                                 <a 
                                     href="#forgot" 
                                     onClick={(e) => { e.preventDefault(); setForgotMode(true); setError(''); }}
                                     style={{ color: 'var(--accent-blue-hover)', textDecoration: 'none', fontSize: '0.85rem' }}
                                 >
-                                    Forgot Password?
+                                    Quên mật khẩu?
                                 </a>
                             </div>
                             <input 
@@ -172,7 +172,7 @@ export default function Login() {
 
                         <div className="btn-group" style={{marginTop: '10px'}}>
                             <button type="submit" className="primary-btn" disabled={loading}>
-                                {loading ? 'Logging in...' : 'Login'}
+                                {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                             </button>
                         </div>
                         
@@ -182,7 +182,7 @@ export default function Login() {
 
                         <div style={{textAlign: 'center', marginTop: '10px'}}>
                             <Link to="/register" style={{color: 'var(--accent-blue-hover)', textDecoration: 'none'}}>
-                                Don't have an account? Register here.
+                                Chưa có tài khoản? Đăng ký tại đây.
                             </Link>
                         </div>
                     </form>
@@ -193,7 +193,7 @@ export default function Login() {
                             /* STEP 1: Enter Email */
                             <form onSubmit={handleForgotPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 <div className="control-group">
-                                    <label>Enter your registration email</label>
+                                    <label>Nhập email đăng ký của bạn</label>
                                     <input 
                                         type="email" 
                                         style={inputStyle}
@@ -207,7 +207,7 @@ export default function Login() {
 
                                 <div className="btn-group" style={{marginTop: '10px', display: 'flex', gap: '10px'}}>
                                     <button type="submit" className="primary-btn" disabled={loading} style={{ flex: 1 }}>
-                                        {loading ? 'Sending...' : 'Send Verification Code'}
+                                        {loading ? 'Đang gửi...' : 'Gửi mã xác thực'}
                                     </button>
                                     <button 
                                         type="button" 
@@ -223,7 +223,7 @@ export default function Login() {
                                             cursor: 'pointer'
                                         }}
                                     >
-                                        Cancel
+                                        Hủy
                                     </button>
                                 </div>
                             </form>
@@ -231,7 +231,7 @@ export default function Login() {
                             /* STEP 2: Enter OTP & New Password */
                             <form onSubmit={handleResetPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 <div className="control-group">
-                                    <label>Verification Code (OTP) sent to {forgotEmail}</label>
+                                    <label>Mã xác thực (OTP) đã gửi đến {forgotEmail}</label>
                                     <input 
                                         type="text" 
                                         style={inputStyle}
@@ -242,7 +242,7 @@ export default function Login() {
                                 </div>
 
                                 <div className="control-group">
-                                    <label>New Password</label>
+                                    <label>Mật khẩu mới</label>
                                     <input 
                                         type="password" 
                                         style={inputStyle}
@@ -253,7 +253,7 @@ export default function Login() {
                                 </div>
 
                                 <div className="control-group">
-                                    <label>Confirm New Password</label>
+                                    <label>Xác nhận mật khẩu mới</label>
                                     <input 
                                         type="password" 
                                         style={inputStyle}
@@ -267,7 +267,7 @@ export default function Login() {
 
                                 <div className="btn-group" style={{marginTop: '10px', display: 'flex', gap: '10px'}}>
                                     <button type="submit" className="primary-btn" disabled={loading} style={{ flex: 1 }}>
-                                        {loading ? 'Resetting...' : 'Reset Password'}
+                                        {loading ? 'Đang khôi phục...' : 'Đặt lại mật khẩu'}
                                     </button>
                                     <button 
                                         type="button" 
@@ -283,7 +283,7 @@ export default function Login() {
                                             cursor: 'pointer'
                                         }}
                                     >
-                                        Back
+                                        Quay lại
                                     </button>
                                 </div>
                             </form>

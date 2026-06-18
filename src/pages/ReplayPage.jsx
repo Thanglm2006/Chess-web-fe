@@ -206,7 +206,7 @@ export default function ReplayPage() {
 
     return (
         <div className="main-menu-wrapper" style={{ display: 'flex', background: '#1c1a17', minHeight: '100vh', width: '100vw', color: '#fff', overflow: 'hidden' }}>
-            <Sidebar username={user?.username || 'User'} />
+            <Sidebar username={user?.username || 'Người chơi'} />
 
             {/* Center Area (Chess Board) */}
             <div className="board-area" style={{ flex: 2 }}>

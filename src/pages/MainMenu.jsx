@@ -13,7 +13,7 @@ export default function MainMenu() {
     const navigate = useNavigate();
     const location = useLocation();
     const boardRef = useRef(null);
-    const [username, setUsername] = useState('Guest');
+    const [username, setUsername] = useState('Khách');
     const [friends, setFriends] = useState([]);
     const [matchType, setMatchType] = useState('rapid');
 
@@ -28,7 +28,7 @@ export default function MainMenu() {
     // Online Play Lobby Modal States
     const [isLobbyOpen, setIsLobbyOpen] = useState(false);
     const [matchState, setMatchState] = useState('INITIALIZING');
-    const [status, setStatus] = useState('Connected. Select a mode.');
+    const [status, setStatus] = useState('Đã kết nối. Chọn một chế độ chơi.');
     const [gameId, setGameId] = useState(null);
     const [opponent, setOpponent] = useState(null);
     const [confirmCountdown, setConfirmCountdown] = useState(10);
@@ -68,7 +68,7 @@ export default function MainMenu() {
 
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || payload.sub || 'User');
+                setUsername(payload.username || payload.sub || 'Người chơi');
                 
                 // Fetch friends
                 try {
@@ -166,7 +166,7 @@ export default function MainMenu() {
                         setOpponent({
                             id: msg.opponentId,
                             name: msg.opponentName,
-                            country: msg.opponentCountry || 'Earth',
+                            country: msg.opponentCountry || 'Trái Đất',
                             rating: msg.opponentRating || 1200
                         });
                         setHasAccepted(false);
@@ -175,14 +175,14 @@ export default function MainMenu() {
                     case 'MATCH_CANCELLED':
                         if (confirmTimer.current) clearInterval(confirmTimer.current);
                         setMatchState('INITIALIZING');
-                        setStatus(msg.reason || 'Match cancelled');
+                        setStatus(msg.reason || 'Trận đấu bị hủy');
                         break;
                     case 'GAME_START':
                         if (confirmTimer.current) clearInterval(confirmTimer.current);
                         setIsLobbyOpen(false);
                         // Reset modal state
                         setMatchState('INITIALIZING');
-                        setStatus('Connected. Select a mode.');
+                        setStatus('Đã kết nối. Chọn một chế độ chơi.');
                         // Navigate to play-online with game details in state
                         navigate('/play-online', { state: { gameStartMsg: msg } });
                         break;
@@ -221,13 +221,13 @@ export default function MainMenu() {
     const joinMatchmaking = async () => {
         setMatchState('SEARCHING');
         setHasAccepted(false);
-        setStatus('Searching for opponent...');
+        setStatus('Đang tìm đối thủ...');
         try {
             const token = await AuthService.getValidToken();
             const userData = AuthService.parseToken(token);
             await api.post(`/api/matchmaking/join?userId=${userData.userId}&type=${matchType}`);
         } catch (err) {
-            setStatus('Matchmaking Error: ' + err.message);
+            setStatus('Lỗi ghép trận: ' + err.message);
         }
     };
 
@@ -243,13 +243,13 @@ export default function MainMenu() {
     };
 
     const handleCreateRoom = () => {
-        setStatus('Creating private room...');
+        setStatus('Đang tạo phòng riêng...');
         socketClient.send({ type: 'CREATE_ROOM', matchType: matchType });
     };
 
     const handleJoinRoom = () => {
         if (!joinRoomCode) return;
-        setStatus(`Joining room ${joinRoomCode}...`);
+        setStatus(`Đang vào phòng ${joinRoomCode}...`);
         socketClient.send({ type: 'JOIN_ROOM', code: joinRoomCode });
     };
 
@@ -263,14 +263,14 @@ export default function MainMenu() {
         if (confirmTimer.current) clearInterval(confirmTimer.current);
         socketClient.send({ type: 'REJECT_MATCH', gameId: gameIdRef.current });
         setMatchState('INITIALIZING');
-        setStatus('Connected. Select a mode.');
+        setStatus('Đã kết nối. Chọn một chế độ chơi.');
     };
 
     const cancelSearch = () => {
         setMatchState('INITIALIZING');
         setRoomCode('');
         socketClient.send({ type: 'LEAVE_QUEUE' });
-        setStatus('Connected. Select a mode.');
+        setStatus('Đã kết nối. Chọn một chế độ chơi.');
     };
 
     const handleLogout = () => {
@@ -644,11 +644,11 @@ export default function MainMenu() {
             {inviteReceived && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
                     <div className="glass-panel" style={{ textAlign: 'center', padding: '30px' }}>
-                        <h2>Match Invitation!</h2>
-                        <p>{inviteReceived.hostName} has invited you to play.</p>
+                        <h2>Lời mời đấu cờ!</h2>
+                        <p>{inviteReceived.hostName} đã mời bạn tham gia trận đấu.</p>
                         <div className="btn-group" style={{ marginTop: '20px' }}>
-                            <button onClick={handleAcceptInvite} className="primary-btn">Accept</button>
-                            <button onClick={() => setInviteReceived(null)} className="secondary-btn">Reject</button>
+                            <button onClick={handleAcceptInvite} className="primary-btn">Chấp nhận</button>
+                            <button onClick={() => setInviteReceived(null)} className="secondary-btn">Từ chối</button>
                         </div>
                     </div>
                 </div>

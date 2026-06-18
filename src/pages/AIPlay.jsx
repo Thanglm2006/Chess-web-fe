@@ -7,9 +7,9 @@ import '../index.css';
 
 function AIPlay() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('User');
+  const [username, setUsername] = useState('Người dùng');
   const [mode, setMode] = useState('human-white'); // 'human-white' or 'human-black'
-  const [status, setStatus] = useState('Select your settings and click Start Game');
+  const [status, setStatus] = useState('Chọn cài đặt của bạn và nhấp vào Bắt đầu trận đấu');
   const [difficulty, setDifficulty] = useState(3); // 1 = Easy, 2 = Medium, 3 = Hard, 4 = Expert
   const [gameId, setGameId] = useState(null);
   
@@ -32,7 +32,7 @@ function AIPlay() {
         if (token) {
           const payload = AuthService.parseToken(token);
           if (payload) {
-            setUsername(payload.username || payload.sub || 'User');
+            setUsername(payload.username || payload.sub || 'Người chơi');
           }
         }
       } catch (e) {
@@ -62,7 +62,7 @@ function AIPlay() {
     if (!gameId) return;
 
     if (!window.Chess || !window.Chessboard) {
-      setStatus('Waiting for chess engine scripts to load...');
+      setStatus('Đang chờ các mã script của bàn cờ tải...');
       return;
     }
 
@@ -126,7 +126,7 @@ function AIPlay() {
           boardRef.current.position(gameRef.current.fen());
 
           isWait.current = true;
-          setStatus('AI is calculating its response...');
+          setStatus('AI đang tính toán nước đi...');
 
           const prevHistory = [...gameHistory];
           if (move.san) {
@@ -138,7 +138,7 @@ function AIPlay() {
               updateGameStatus(state);
           } catch (e) {
               console.error(e);
-              setStatus(e.response?.data?.message || 'Move rejected or AI service offline.');
+              setStatus(e.response?.data?.message || 'Nước đi bị từ chối hoặc máy chủ AI đang ngoại tuyến.');
               isWait.current = false;
               
               gameRef.current.undo();
@@ -200,7 +200,7 @@ function AIPlay() {
       selectedSquareRef.current = null;
 
       isWait.current = true;
-      setStatus('AI is calculating its response...');
+      setStatus('AI đang tính toán nước đi...');
 
       // Update history immediately for instant responsive feedback
       const prevHistory = [...gameHistory];
@@ -220,7 +220,7 @@ function AIPlay() {
           updateGameStatus(state);
       } catch (e) {
           console.error(e);
-          setStatus(e.response?.data?.message || 'Move rejected or AI service offline.');
+          setStatus(e.response?.data?.message || 'Nước đi bị từ chối hoặc máy chủ AI đang ngoại tuyến.');
           isWait.current = false;
           
           // Roll back local move on failure

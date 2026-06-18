@@ -9,7 +9,7 @@ import '../index.css';
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
-    const [username, setUsername] = useState('Admin');
+    const [username, setUsername] = useState('Quản trị viên');
     const [stats, setStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
                 navigate('/menu');
                 return;
             }
-            setUsername(payload.username || 'Admin');
+            setUsername(payload.username || 'Quản trị viên');
         };
         checkToken();
         loadStats();
@@ -300,7 +300,7 @@ export default function AdminDashboard() {
                                                     background: u.isBanned ? 'rgba(239, 68, 68, 0.2)' : 'rgba(74, 222, 128, 0.2)',
                                                     color: u.isBanned ? '#ef4444' : '#4ade80'
                                                 }}>
-                                                    {u.isBanned ? 'Banned' : 'Active'}
+                                                    {u.isBanned ? 'Bị khóa' : 'Hoạt động'}
                                                 </span>
                                             </div>
                                         </div>

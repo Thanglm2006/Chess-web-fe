@@ -16,7 +16,7 @@ export default function Friends() {
     const [pending, setPending] = useState([]);
     const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [username, setUsername] = useState('Guest');
+    const [username, setUsername] = useState('Khách');
     const [openRemoveDropdown, setOpenRemoveDropdown] = useState(null);
     const [loadingId, setLoadingId] = useState(null);
 
@@ -44,7 +44,7 @@ export default function Friends() {
 
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || payload.sub || 'User');
+                setUsername(payload.username || payload.sub || 'Người chơi');
             }
 
             await loadData();
@@ -98,7 +98,7 @@ export default function Friends() {
             setLoadingId(null);
         } catch (error) {
             console.error("Failed to remove friend", error);
-            alert("Could not remove friend");
+            alert("Không thể hủy kết bạn");
             setLoadingId(null);
         }
     };
@@ -188,7 +188,7 @@ export default function Friends() {
                     <div className="friends-list-container">
                         <div className="friends-list-header">
                             <span style={{ fontWeight: 600 }}>Bạn bè <span style={{ color: '#8b92a5', marginLeft: '5px' }}>{friends.length}</span></span>
-                            <span style={{ fontSize: '0.8rem', color: '#8b92a5', cursor: 'pointer' }}>Most Recently Online ▾</span>
+                            <span style={{ fontSize: '0.8rem', color: '#8b92a5', cursor: 'pointer' }}>Truy cập gần đây nhất ▾</span>
                         </div>
 
                         <div className="friends-list">

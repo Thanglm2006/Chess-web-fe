@@ -9,7 +9,7 @@ import '../index.css';
 export default function TournamentLobby() {
     const { tournamentId } = useParams();
     const navigate = useNavigate();
-    const [username, setUsername] = useState('User');
+    const [username, setUsername] = useState('Người chơi');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [pairing, setPairing] = useState(null);
@@ -35,7 +35,7 @@ export default function TournamentLobby() {
             }
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || 'User');
+                setUsername(payload.username || 'Người chơi');
             }
 
             // Connect socket if not connected

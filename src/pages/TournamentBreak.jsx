@@ -11,7 +11,7 @@ export default function TournamentBreak() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     
-    const [username, setUsername] = useState('User');
+    const [username, setUsername] = useState('Người chơi');
     const [standings, setStandings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [timeLeft, setTimeLeft] = useState(parseInt(searchParams.get('duration') || '600'));
@@ -27,7 +27,7 @@ export default function TournamentBreak() {
             }
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || 'User');
+                setUsername(payload.username || 'Người chơi');
             }
 
             // Fetch current standings during break

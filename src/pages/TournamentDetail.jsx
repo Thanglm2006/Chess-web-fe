@@ -23,7 +23,7 @@ const getMockTournament = (id) => ({
 
 const getMockStandings = (username, userId) => {
     const currentUserId = userId || 999;
-    const currentUsername = username || "User";
+    const currentUsername = username || "Người chơi";
     return [
         { userId: 101, username: "Magnus Carlsen", initialRating: 2882, currentScore: 3.5, buchholz: 7.5, sonnebornBerger: 6.25 },
         { userId: currentUserId, username: `${currentUsername} (Bạn)`, initialRating: 1850, currentScore: 3.0, buchholz: 8.0, sonnebornBerger: 5.50 },
@@ -45,7 +45,7 @@ const getMockRounds = () => [
 
 const getMockPairings = (roundId, username, userId) => {
     const currentUserId = userId || 999;
-    const currentUsername = username || "User";
+    const currentUsername = username || "Người chơi";
     
     // Round 1
     if (roundId === 1001) {
@@ -88,7 +88,7 @@ const getMockMyPairing = (username, userId) => ({
     whitePlayerName: "Praggnanandhaa",
     whitePlayerRating: 2750,
     whitePlayerId: 104,
-    blackPlayerName: username || "User",
+    blackPlayerName: username || "Người chơi",
     blackPlayerRating: 1850,
     blackPlayerId: userId || 999,
     isBye: false,
@@ -100,7 +100,7 @@ const getMockMyPairing = (username, userId) => ({
 export default function TournamentDetail() {
     const { tournamentId } = useParams();
     const navigate = useNavigate();
-    const [username, setUsername] = useState('User');
+    const [username, setUsername] = useState('Người chơi');
     const [userId, setUserId] = useState(null);
     const [tournament, setTournament] = useState(null);
     const [standings, setStandings] = useState([]);
@@ -121,7 +121,7 @@ export default function TournamentDetail() {
             }
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || 'User');
+                setUsername(payload.username || 'Người chơi');
                 setUserId(payload.userId);
             }
         };
