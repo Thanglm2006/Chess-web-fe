@@ -73,6 +73,20 @@ export default function MainMenu() {
 
     useEffect(() => {
         const init = async () => {
+            // Render background board immediately to avoid black screen flashing
+            if (window.Chessboard && !boardRef.current) {
+                setTimeout(() => {
+                    const boardEl = document.getElementById('main-menu-board');
+                    if (boardEl && !boardRef.current) {
+                        boardRef.current = window.Chessboard('main-menu-board', {
+                            position: 'start',
+                            showNotation: true,
+                            pieceTheme: '/chessPieces/{piece}.png'
+                        });
+                    }
+                }, 0);
+            }
+
             const token = await AuthService.getValidToken();
             if (!token) {
                 navigate('/login');
@@ -137,20 +151,6 @@ export default function MainMenu() {
                 setSelectedAiModel(defaultKey);
             } catch (e) {
                 console.error('Failed to load AI checkpoints in MainMenu', e);
-            }
-
-            // Render background board
-            if (window.Chessboard && !boardRef.current) {
-                setTimeout(() => {
-                    const boardEl = document.getElementById('main-menu-board');
-                    if (boardEl) {
-                        boardRef.current = window.Chessboard('main-menu-board', {
-                            position: 'start',
-                            showNotation: true,
-                            pieceTheme: '/chessPieces/{piece}.png'
-                        });
-                    }
-                }, 100);
             }
         };
 
