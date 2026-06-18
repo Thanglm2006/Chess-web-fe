@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
+import { UserService } from '../services/UserService';
 import { GameService } from '../services/GameService';
 import { FriendService } from '../services/FriendService';
 import { AiGameService } from '../services/AiGameService';
@@ -9,11 +10,25 @@ import api from '../services/api';
 import '../index.css';
 import Sidebar from '../components/Sidebar';
 
+const getFlagEmoji = (code) => {
+    if (!code || code.length !== 2) return '🇻🇳';
+    try {
+        const codeUpper = code.toUpperCase();
+        const firstChar = codeUpper.charCodeAt(0) - 65 + 0x1F1E6;
+        const secondChar = codeUpper.charCodeAt(1) - 65 + 0x1F1E6;
+        return String.fromCodePoint(firstChar, secondChar);
+    } catch (e) {
+        return '🇻🇳';
+    }
+};
+
 export default function MainMenu() {
     const navigate = useNavigate();
     const location = useLocation();
     const boardRef = useRef(null);
-    const [username, setUsername] = useState('Khách');
+    const [username, setUsername] = useState(localStorage.getItem('username') || 'Khách');
+    const [rating, setRating] = useState(Number(localStorage.getItem('rating')) || 1200);
+    const [countryCode, setCountryCode] = useState(localStorage.getItem('countryCode') || 'VN');
     const [friends, setFriends] = useState([]);
     const [matchType, setMatchType] = useState('rapid');
 
@@ -68,7 +83,30 @@ export default function MainMenu() {
 
             const payload = AuthService.parseToken(token);
             if (payload) {
-                setUsername(payload.username || payload.sub || 'Người chơi');
+                if (!localStorage.getItem('username')) {
+                    setUsername(payload.username || payload.sub || 'Người chơi');
+                }
+                
+                // Fetch user stats
+                try {
+                    const stats = await UserService.getStats(payload.userId);
+                    if (stats) {
+                        if (stats.username) {
+                            setUsername(stats.username);
+                            localStorage.setItem('username', stats.username);
+                        }
+                        if (stats.rating) {
+                            setRating(stats.rating);
+                            localStorage.setItem('rating', String(stats.rating));
+                        }
+                        if (stats.countryCode) {
+                            setCountryCode(stats.countryCode);
+                            localStorage.setItem('countryCode', stats.countryCode);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to load user stats", err);
+                }
                 
                 // Fetch friends
                 try {
@@ -275,6 +313,9 @@ export default function MainMenu() {
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('username');
+        localStorage.removeItem('rating');
+        localStorage.removeItem('countryCode');
         socketClient.disconnect();
         navigate('/login');
     };
@@ -300,7 +341,11 @@ export default function MainMenu() {
                     <div id="main-menu-board" className="chess-board-wrapper"></div>
                     <div className="player-info-bottom">
                         <div className="avatar-small"><span className="icon">👤</span></div>
-                        <span className="username" style={{ textTransform: 'capitalize' }}>{username} <span className="flag">🇻🇳</span></span>
+                        <span className="username" style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {username} 
+                            <span style={{ color: '#81b64c', fontWeight: 'bold', fontSize: '0.9rem' }}>({rating})</span> 
+                            <span className="flag">{getFlagEmoji(countryCode)}</span>
+                        </span>
                     </div>
                 </div>
             </div>
