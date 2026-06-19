@@ -418,7 +418,7 @@ export default function MainMenu() {
 
                     <div className="panel-footer">
                         <a href="#" className="footer-link" onClick={() => navigate('/profile')}>📁 Lịch sử ván đấu</a>
-                        <a href="#" className="footer-link">📊 Bảng xếp hạng</a>
+                        <a href="#" className="footer-link" onClick={(e) => { e.preventDefault(); navigate('/leaderboard'); }}>📊 Bảng xếp hạng</a>
                     </div>
                 </div>
 

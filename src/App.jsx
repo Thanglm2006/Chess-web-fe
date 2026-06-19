@@ -7,6 +7,7 @@ import AIPlay from './pages/AIPlay';
 import OnlinePlay from './pages/OnlinePlay';
 import Profile from './pages/Profile';
 import Friends from './pages/Friends';
+import Leaderboard from './pages/Leaderboard';
 import Tournaments from './pages/Tournaments';
 import TournamentLobby from './pages/TournamentLobby';
 import TournamentBreak from './pages/TournamentBreak';
@@ -106,6 +107,14 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Friends />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/leaderboard"
+                        element={
+                            <PrivateRoute>
+                                <Leaderboard />
                             </PrivateRoute>
                         }
                     />

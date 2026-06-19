@@ -17,6 +17,7 @@ export default function Friends() {
     const [pending, setPending] = useState([]);
     const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [leaderboard, setLeaderboard] = useState([]);
     const [loading, setLoading] = useState(true);
     const [username, setUsername] = useState('Khách');
     const [openRemoveDropdown, setOpenRemoveDropdown] = useState(null);
@@ -25,6 +26,36 @@ export default function Friends() {
     // Search state
     const [searchTerm, setSearchTerm] = useState('');
     const [message, setMessage] = useState('');
+
+    // Profile modal state
+    const [selectedPlayerStats, setSelectedPlayerStats] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(false);
+
+    const handlePlayerClick = async (playerId) => {
+        try {
+            setProfileLoading(true);
+            const stats = await UserService.getStats(playerId);
+            setSelectedPlayerStats(stats);
+        } catch (e) {
+            console.error("Failed to load player profile stats", e);
+        } finally {
+            setProfileLoading(false);
+        }
+    };
+
+    const getFlagEmoji = (code) => {
+        if (!code || code.length !== 2) return '🌍';
+        if (code === 'VN') return '🇻🇳';
+        if (code === 'US') return '🇺🇸';
+        try {
+            const codeUpper = code.toUpperCase();
+            const firstChar = codeUpper.charCodeAt(0) - 65 + 0x1F1E6;
+            const secondChar = codeUpper.charCodeAt(1) - 65 + 0x1F1E6;
+            return String.fromCodePoint(firstChar, secondChar);
+        } catch (e) {
+            return '🌍';
+        }
+    };
 
     useEffect(() => {
         const handleOutsideClick = () => {
@@ -85,6 +116,9 @@ export default function Friends() {
 
                 const pendingData = await FriendService.getPending(userData.userId);
                 setPending(Array.isArray(pendingData) ? pendingData : []);
+
+                const leaderboardData = await UserService.getLeaderboard();
+                setLeaderboard(Array.isArray(leaderboardData) ? leaderboardData : []);
             }
         } catch (error) {
             console.error("Failed to load friends", error);
@@ -158,20 +192,6 @@ export default function Friends() {
                             </div>
                             <span>&gt;</span>
                         </div>
-                        <div className="friend-action-btn">
-                            <div className="friend-action-content">
-                                <span className="icon">✉️</span>
-                                <span>Gửi thư mời</span>
-                            </div>
-                            <span>&gt;</span>
-                        </div>
-                        <div className="friend-action-btn">
-                            <div className="friend-action-content">
-                                <span className="icon">🔗</span>
-                                <span>Tạo lời thách đấu</span>
-                            </div>
-                            <span>&gt;</span>
-                        </div>
                     </div>
 
                     {/* Search Bar */}
@@ -203,7 +223,7 @@ export default function Friends() {
                                     .filter(f => f.username.toLowerCase().includes(searchTerm.toLowerCase()))
                                     .map(friend => (
                                         <div key={friend.userId} className="friend-item">
-                                            <div className="friend-info">
+                                            <div className="friend-info" onClick={() => handlePlayerClick(friend.userId)} style={{ cursor: 'pointer' }}>
                                                 <div className="friend-avatar">
                                                     {friend.username.charAt(0).toUpperCase()}
                                                     <div style={{
@@ -258,23 +278,55 @@ export default function Friends() {
                 <div className="friends-sidebar-col">
                     {/* Leaderboard Panel */}
                     <div className="leaderboard-panel">
-                        <div className="leaderboard-header">
-                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Bảng xếp hạng Bạn bè</h3>
+                        <div className="leaderboard-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                🏆 Bảng xếp hạng
+                            </h3>
                         </div>
 
-                        <div className="leaderboard-tabs">
-                            {['Chớp', 'Siêu chớp', 'Cờ chớp', 'Câu đố'].map((type, idx) => (
-                                <div key={type} className="leaderboard-tab-item">
-                                    <div className="leaderboard-tab-header">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span>{idx === 0 ? '⚡' : idx === 1 ? '🚀' : idx === 2 ? '⏱️' : '🧩'}</span>
-                                            <span style={{ fontSize: '0.9rem' }}>{type}</span>
-                                        </div>
-                                        <span style={{ color: '#8b92a5' }}>&gt;</span>
-                                    </div>
-                                    {/* Real data would go here */}
+                        <div className="leaderboard-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {leaderboard.length === 0 ? (
+                                <div style={{ color: '#8b92a5', fontSize: '0.85rem', textAlign: 'center', padding: '10px' }}>
+                                    Đang tải bảng xếp hạng...
                                 </div>
-                            ))}
+                            ) : (
+                                leaderboard.slice(0, 8).map((player, idx) => (
+                                    <div key={player.userId} 
+                                    onClick={() => handlePlayerClick(player.userId)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        background: player.userId === user?.userId ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.01)',
+                                        border: player.userId === user?.userId ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(255,255,255,0.03)',
+                                        borderRadius: '8px',
+                                        padding: '8px 12px',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{
+                                                fontWeight: 'bold',
+                                                color: idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : '#8b92a5',
+                                                fontSize: '0.9rem',
+                                                width: '18px'
+                                            }}>{idx + 1}</span>
+                                            <span style={{
+                                                fontWeight: player.userId === user?.userId ? 'bold' : '500',
+                                                color: player.userId === user?.userId ? '#818cf8' : '#ffffff',
+                                                fontSize: '0.9rem'
+                                            }}>{player.username}</span>
+                                            {player.countryCode && (
+                                                <span style={{ fontSize: '0.8rem' }} title={player.countryCode}>
+                                                    {player.countryCode === 'VN' ? '🇻🇳' : player.countryCode === 'US' ? '🇺🇸' : '🌍'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#a5b4fc' }}>
+                                            ⭐ {player.rating}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
 
@@ -306,6 +358,165 @@ export default function Friends() {
                     onActionSuccess={loadData}
                 />
             )}
+
+            {/* Profile Loading Overlay */}
+            {profileLoading && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    color: '#ffffff', flexDirection: 'column', gap: '12px'
+                }}>
+                    <div className="spinner" style={{ width: '48px', height: '48px', border: '4px solid rgba(255,255,255,0.05)', borderTop: '4px solid #818cf8', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                    <span style={{ fontSize: '0.95rem', fontWeight: '600' }}>Đang tải thông tin...</span>
+                </div>
+            )}
+
+            {/* Profile Modal */}
+            {selectedPlayerStats && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                    zIndex: 999, display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    padding: '20px'
+                }} onClick={() => setSelectedPlayerStats(null)}>
+                    <div style={{
+                        background: '#151412',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '16px',
+                        width: '100%',
+                        maxWidth: '520px',
+                        padding: '24px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '20px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                        animation: 'profileFadeIn 0.25s ease-out'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        
+                        {/* Header info */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{
+                                    width: '64px', height: '64px', borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                    fontSize: '2rem', color: '#ffffff', fontWeight: 'bold'
+                                }}>
+                                    {selectedPlayerStats.username ? selectedPlayerStats.username.substring(0, 2).toUpperCase() : 'US'}
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.4rem', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {selectedPlayerStats.username}
+                                        <span style={{ fontSize: '1.25rem' }}>{getFlagEmoji(selectedPlayerStats.countryCode)}</span>
+                                    </h3>
+                                    <span style={{ display: 'inline-block', fontSize: '0.85rem', color: '#81b64c', fontWeight: 'bold', marginTop: '4px', background: 'rgba(129, 182, 76, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                                        ⭐ {selectedPlayerStats.rating} ELO
+                                    </span>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setSelectedPlayerStats(null)}
+                                style={{
+                                    background: 'transparent', border: 'none', color: '#8b92a5',
+                                    fontSize: '1.5rem', cursor: 'pointer', outline: 'none'
+                                }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        {/* Medal Trophies */}
+                        <div style={{
+                            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px',
+                            background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px'
+                        }}>
+                            <div style={{ textAlign: 'center' }}>
+                                <span style={{ display: 'block', fontSize: '1.5rem' }}>🥇</span>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#fbbf24', fontWeight: 'bold', marginTop: '4px' }}>
+                                    {selectedPlayerStats.goldMedals || 0} Vàng
+                                </span>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <span style={{ display: 'block', fontSize: '1.5rem' }}>🥈</span>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', fontWeight: 'bold', marginTop: '4px' }}>
+                                    {selectedPlayerStats.silverMedals || 0} Bạc
+                                </span>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <span style={{ display: 'block', fontSize: '1.5rem' }}>🥉</span>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#b45309', fontWeight: 'bold', marginTop: '4px' }}>
+                                    {selectedPlayerStats.bronzeMedals || 0} Đồng
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Match statistics */}
+                        <div>
+                            <h4 style={{ margin: '0 0 10px 0', color: '#8b92a5', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Thống kê kết quả
+                            </h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#d1d5db' }}>
+                                    <span>Tổng số ván đấu</span>
+                                    <strong>{selectedPlayerStats.gamesPlayed || 0} ván</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#d1d5db' }}>
+                                    <span>Tỉ lệ thắng</span>
+                                    <strong style={{ color: '#81b64c' }}>{(selectedPlayerStats.winRate || 0.0).toFixed(1)}%</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#d1d5db' }}>
+                                    <span>Số trận Thắng / Thua / Hòa</span>
+                                    <strong>
+                                        <span style={{ color: '#81b64c' }}>{selectedPlayerStats.wins || 0}W</span> /&nbsp;
+                                        <span style={{ color: '#f87171' }}>{selectedPlayerStats.losses || 0}L</span> /&nbsp;
+                                        <span style={{ color: '#94a3b8' }}>{selectedPlayerStats.draws || 0}D</span>
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tournament History */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, maxHeight: '180px', overflowY: 'auto' }}>
+                            <h4 style={{ margin: '0 0 4px 0', color: '#8b92a5', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Lịch sử giải đấu
+                            </h4>
+                            {!selectedPlayerStats.tournamentHistory || selectedPlayerStats.tournamentHistory.length === 0 ? (
+                                <p style={{ fontSize: '0.85rem', color: '#8b92a5', margin: 0, textAlign: 'center', padding: '15px' }}>
+                                    Chưa tham gia giải đấu nào
+                                </p>
+                            ) : (
+                                selectedPlayerStats.tournamentHistory.map((t, idx) => (
+                                    <div key={idx} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: '6px',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        <span style={{ color: '#ffffff', fontWeight: '500' }}>{t.tournamentName}</span>
+                                        <span style={{ 
+                                            fontWeight: 'bold', 
+                                            color: t.rank === 1 ? '#fbbf24' : t.rank === 2 ? '#94a3b8' : t.rank === 3 ? '#b45309' : '#8b92a5'
+                                        }}>
+                                            Hạng {t.rank}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                @keyframes profileFadeIn {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
+                }
+            `}</style>
         </div>
     );
 }

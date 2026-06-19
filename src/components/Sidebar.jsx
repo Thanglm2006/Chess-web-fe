@@ -81,6 +81,13 @@ export default function Sidebar({ username }) {
                 </a>
                 <a 
                     href="#" 
+                    className={`nav-item ${isActive('/leaderboard') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); navigate('/leaderboard'); }}
+                >
+                    <span className="icon">📊</span> Bảng xếp hạng
+                </a>
+                <a 
+                    href="#" 
                     className={`nav-item ${isActive('/friends') ? 'active' : ''}`}
                     onClick={(e) => { e.preventDefault(); navigate('/friends'); }}
                 >

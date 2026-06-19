@@ -9,5 +9,9 @@ export const UserService = {
     getStats: async (userId) => {
         const response = await api.get(`/api/user/${userId}/stats`);
         return response.data;
+    },
+    getLeaderboard: async () => {
+        const response = await api.get('/api/user/leaderboard');
+        return response.data;
     }
 };
