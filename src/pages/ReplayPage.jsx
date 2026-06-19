@@ -109,6 +109,17 @@ export default function ReplayPage() {
             };
             boardRef.current = window.Chessboard('replay-board', config);
         }
+
+        return () => {
+            if (boardRef.current) {
+                try {
+                    boardRef.current.destroy();
+                    boardRef.current = null;
+                } catch (e) {
+                    console.warn("Failed to destroy boardRef in ReplayPage", e);
+                }
+            }
+        };
     }, [gameData]);
 
     // Autoplay Timer effect
@@ -119,7 +130,7 @@ export default function ReplayPage() {
             if (currentMoveIndex < replayMoves.length - 1) {
                 const nextIdx = currentMoveIndex + 1;
                 chessRef.current.move(replayMoves[nextIdx]);
-                boardRef.current.position(chessRef.current.fen());
+                boardRef.current.position(chessRef.current.fen(), false);
                 setCurrentMoveIndex(nextIdx);
             } else {
                 setIsPlaying(false);
@@ -148,14 +159,14 @@ export default function ReplayPage() {
         for (let i = 0; i <= index; i++) {
             chessRef.current.move(replayMoves[i]);
         }
-        boardRef.current.position(chessRef.current.fen());
+        boardRef.current.position(chessRef.current.fen(), false);
         setCurrentMoveIndex(index);
     };
 
     const firstMove = () => {
         if (!chessRef.current || !boardRef.current) return;
         chessRef.current.reset();
-        boardRef.current.position(chessRef.current.fen());
+        boardRef.current.position(chessRef.current.fen(), false);
         setCurrentMoveIndex(-1);
     };
 
@@ -209,8 +220,8 @@ export default function ReplayPage() {
             <Sidebar username={user?.username || 'Người chơi'} />
 
             {/* Center Area (Chess Board) */}
-            <div className="board-area" style={{ flex: 2 }}>
-                <div className="board-container" style={{ position: 'relative' }}>
+            <div className="board-area" style={{ flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div className="board-container" style={{ position: 'relative', width: '100%', maxWidth: '80vh' }}>
                     
                     {/* Opponent Info Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '0 4px' }}>
