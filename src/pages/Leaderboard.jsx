@@ -4,6 +4,7 @@ import { UserService } from '../services/UserService';
 import { AuthService } from '../services/AuthService';
 import '../index.css';
 import Sidebar from '../components/Sidebar';
+import { FriendService } from '../services/FriendService';
 
 export default function Leaderboard() {
     const navigate = useNavigate();
@@ -16,6 +17,36 @@ export default function Leaderboard() {
     // Modal state
     const [selectedPlayerStats, setSelectedPlayerStats] = useState(null);
     const [profileLoading, setProfileLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    const handleSendRequest = async (targetId) => {
+        if (!user) return;
+        try {
+            setActionLoading(true);
+            await FriendService.sendRequest(user.userId, targetId);
+            setSelectedPlayerStats(prev => ({ ...prev, friendshipStatus: 'PENDING_SENT' }));
+        } catch (error) {
+            console.error("Failed to send request", error);
+            alert("Không thể gửi lời mời kết bạn");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleAcceptRequest = async (targetId) => {
+        if (!user) return;
+        try {
+            setActionLoading(true);
+            await FriendService.acceptRequest(user.userId, targetId);
+            setSelectedPlayerStats(prev => ({ ...prev, friendshipStatus: 'ACCEPTED' }));
+            await loadData();
+        } catch (error) {
+            console.error("Failed to accept request", error);
+            alert("Không thể đồng ý kết bạn");
+        } finally {
+            setActionLoading(false);
+        }
+    };
 
     useEffect(() => {
         const init = async () => {
@@ -333,6 +364,89 @@ export default function Leaderboard() {
                                 &times;
                             </button>
                         </div>
+
+                        {/* Friend Action Button */}
+                        {selectedPlayerStats.friendshipStatus && selectedPlayerStats.friendshipStatus !== 'OWNER' && (
+                            <div style={{ marginTop: '-8px' }}>
+                                {selectedPlayerStats.friendshipStatus === 'NONE' && (
+                                    <button 
+                                        onClick={() => handleSendRequest(selectedPlayerStats.userId)}
+                                        disabled={actionLoading}
+                                        style={{
+                                            width: '100%',
+                                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            color: '#ffffff',
+                                            padding: '10px 16px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            fontSize: '0.9rem',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                                        onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                                    >
+                                        {actionLoading ? 'Đang gửi...' : '➕ Thêm bạn bè'}
+                                    </button>
+                                )}
+                                {selectedPlayerStats.friendshipStatus === 'PENDING_SENT' && (
+                                    <button 
+                                        disabled
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '8px',
+                                            color: '#8b92a5',
+                                            padding: '10px 16px',
+                                            fontWeight: '600',
+                                            fontSize: '0.9rem',
+                                            cursor: 'default'
+                                        }}
+                                    >
+                                        ⏳ Đã gửi lời mời (Đang chờ)
+                                    </button>
+                                )}
+                                {selectedPlayerStats.friendshipStatus === 'PENDING_RECEIVED' && (
+                                    <button 
+                                        onClick={() => handleAcceptRequest(selectedPlayerStats.userId)}
+                                        disabled={actionLoading}
+                                        style={{
+                                            width: '100%',
+                                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            color: '#ffffff',
+                                            padding: '10px 16px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            fontSize: '0.9rem',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                                        onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                                    >
+                                        {actionLoading ? 'Đang xử lý...' : '✓ Chấp nhận kết bạn'}
+                                    </button>
+                                )}
+                                {selectedPlayerStats.friendshipStatus === 'ACCEPTED' && (
+                                    <div style={{
+                                        width: '100%',
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                                        borderRadius: '8px',
+                                        color: '#10b981',
+                                        padding: '10px 16px',
+                                        fontWeight: '600',
+                                        fontSize: '0.9rem',
+                                        textAlign: 'center'
+                                    }}>
+                                        ✓ Bạn bè
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Medal Trophies */}
                         <div style={{
