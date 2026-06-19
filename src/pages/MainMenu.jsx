@@ -211,12 +211,23 @@ export default function MainMenu() {
                         startConfirmCountdown(msg.timeout || 10);
                         break;
                     case 'MATCH_CANCELLED':
-                        if (confirmTimer.current) clearInterval(confirmTimer.current);
-                        setMatchState('INITIALIZING');
-                        setStatus(msg.reason || 'Trận đấu bị hủy');
+                        if (confirmTimer.current) {
+                            clearInterval(confirmTimer.current);
+                            clearTimeout(confirmTimer.current);
+                        }
+                        if (msg.reason === 'MATCH_TIMEOUT') {
+                            setMatchState('SEARCHING');
+                            setStatus('Đối thủ không phản hồi. Đang tự động tìm đối thủ mới...');
+                        } else {
+                            setMatchState('INITIALIZING');
+                            setStatus(msg.reason || 'Trận đấu bị hủy');
+                        }
                         break;
                     case 'GAME_START':
-                        if (confirmTimer.current) clearInterval(confirmTimer.current);
+                        if (confirmTimer.current) {
+                            clearInterval(confirmTimer.current);
+                            clearTimeout(confirmTimer.current);
+                        }
                         setIsLobbyOpen(false);
                         // Reset modal state
                         setMatchState('INITIALIZING');
@@ -237,7 +248,10 @@ export default function MainMenu() {
         }
         return () => {
             socketClient.removeListener(handleLobbySocketMessage);
-            if (confirmTimer.current) clearInterval(confirmTimer.current);
+            if (confirmTimer.current) {
+                clearInterval(confirmTimer.current);
+                clearTimeout(confirmTimer.current);
+            }
         };
     }, [isLobbyOpen]);
 
@@ -295,16 +309,36 @@ export default function MainMenu() {
         if (confirmTimer.current) clearInterval(confirmTimer.current);
         setHasAccepted(true);
         socketClient.send({ type: 'READY', gameId: gameIdRef.current });
+
+        // Start 13 seconds client-side failsafe buffer
+        confirmTimer.current = setTimeout(() => {
+            setMatchState(prev => {
+                if (prev === 'FOUND') {
+                    // Send reject match so server frees our matchmaking state
+                    socketClient.send({ type: 'REJECT_MATCH', gameId: gameIdRef.current });
+                    // Automatically find a new opponent
+                    joinMatchmaking();
+                }
+                return prev;
+            });
+        }, 13000);
     };
 
     const handleReject = () => {
-        if (confirmTimer.current) clearInterval(confirmTimer.current);
+        if (confirmTimer.current) {
+            clearInterval(confirmTimer.current);
+            clearTimeout(confirmTimer.current);
+        }
         socketClient.send({ type: 'REJECT_MATCH', gameId: gameIdRef.current });
         setMatchState('INITIALIZING');
         setStatus('Đã kết nối. Chọn một chế độ chơi.');
     };
 
     const cancelSearch = () => {
+        if (confirmTimer.current) {
+            clearInterval(confirmTimer.current);
+            clearTimeout(confirmTimer.current);
+        }
         setMatchState('INITIALIZING');
         setRoomCode('');
         socketClient.send({ type: 'LEAVE_QUEUE' });

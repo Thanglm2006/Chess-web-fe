@@ -24,4 +24,8 @@ export const FriendService = {
         const response = await api.post(`/api/friends/remove?user1=${user1}&user2=${user2}`);
         return response.data;
     },
+    searchNewFriends: async (userId, query) => {
+        const response = await api.get(`/api/friends/search?userId=${userId}&query=${query}`);
+        return response.data;
+    },
 };

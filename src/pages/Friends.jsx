@@ -8,6 +8,7 @@ import '../index.css';
 import Sidebar from '../components/Sidebar';
 import friendsIcon from '../assets/friends.svg';
 import PendingFriendModal from '../components/friend/PendingFriendModal';
+import SearchFriendModal from '../components/friend/SearchFriendModal';
 
 export default function Friends() {
     const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function Friends() {
     const [friends, setFriends] = useState([]);
     const [pending, setPending] = useState([]);
     const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [username, setUsername] = useState('Khách');
     const [openRemoveDropdown, setOpenRemoveDropdown] = useState(null);
@@ -139,17 +141,17 @@ export default function Friends() {
 
                     {/* Action Grid */}
                     <div className="friends-actions-grid">
-                        <div className="friend-action-btn">
+                        <div className="friend-action-btn" onClick={() => setIsSearchModalOpen(true)}>
                             <div className="friend-action-content">
                                 <span className="icon">👤+</span>
-                                <span>Kết nối bạn bè</span>
+                                <span>Tìm bạn mới</span>
                             </div>
                             <span>&gt;</span>
                         </div>
                         <div className="friend-action-btn" onClick={() => setIsPendingModalOpen(true)}>
                             <div className="friend-action-content">
-                                <span className="icon">🔍</span>
-                                <span>Tìm bạn</span>
+                                <span className="icon">📨</span>
+                                <span>Lời mời kết bạn</span>
                                 {pending.length > 0 && (
                                     <span className="pending-badge">{pending.length}</span>
                                 )}
@@ -293,6 +295,15 @@ export default function Friends() {
                     pending={pending}
                     currentUserId={user.userId}
                     onAcceptSuccess={handleAcceptSuccess}
+                />
+            )}
+
+            {user && (
+                <SearchFriendModal
+                    isOpen={isSearchModalOpen}
+                    onClose={() => setIsSearchModalOpen(false)}
+                    currentUserId={user.userId}
+                    onActionSuccess={loadData}
                 />
             )}
         </div>
