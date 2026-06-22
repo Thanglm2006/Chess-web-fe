@@ -1,20 +1,52 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { UserService } from '../services/UserService';
 import { GameService } from '../services/GameService';
 import { FriendService } from '../services/FriendService';
 import Sidebar from '../components/Sidebar';
 import '../index.css';
 
+const countryFlags = {
+    'VN': '🇻🇳',
+    'US': '🇺🇸',
+    'JP': '🇯🇵',
+    'GB': '🇬🇧',
+    'FR': '🇫🇷',
+    'KR': '🇰🇷',
+    'DE': '🇩🇪',
+    'CN': '🇨🇳'
+};
+
+const countryNames = {
+    'VN': 'Việt Nam',
+    'US': 'Hoa Kỳ',
+    'JP': 'Nhật Bản',
+    'GB': 'Anh Quốc',
+    'FR': 'Pháp',
+    'KR': 'Hàn Quốc',
+    'DE': 'Đức',
+    'CN': 'Trung Quốc'
+};
+
 export default function Profile() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
     const [history, setHistory] = useState([]);
     const [friendsCount, setFriendsCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('match-history'); // 'match-history' or 'tournaments'
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'match-history'); // 'match-history' or 'tournaments'
     
+    // Profile info state
+    const [profileAvatar, setProfileAvatar] = useState('♟️');
+    const [bio, setBio] = useState('');
+    const [country, setCountry] = useState('VN');
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editBio, setEditBio] = useState('');
+    const [editAvatar, setEditAvatar] = useState('♟️');
+    const [editCountry, setEditCountry] = useState('VN');
+
     // Search Filter States
     const [filterOpponent, setFilterOpponent] = useState('');
     const [filterResult, setFilterResult] = useState('ALL');
@@ -22,6 +54,12 @@ export default function Profile() {
     useEffect(() => {
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
+    }, [location.state]);
 
     const loadData = async () => {
         try {
@@ -43,12 +81,59 @@ export default function Profile() {
                 } catch (friendErr) {
                     console.error("Failed to load friends count", friendErr);
                 }
+
+                // Load custom profile information
+                const savedProfile = localStorage.getItem(`chess-profile-${userData.userId}`);
+                if (savedProfile) {
+                    try {
+                        const parsed = JSON.parse(savedProfile);
+                        if (parsed.bio !== undefined) {
+                            setBio(parsed.bio);
+                            setEditBio(parsed.bio);
+                        }
+                        if (parsed.avatar !== undefined) {
+                            setProfileAvatar(parsed.avatar);
+                            setEditAvatar(parsed.avatar);
+                            localStorage.setItem(`chess-avatar-${userData.userId}`, parsed.avatar);
+                        }
+                        if (parsed.countryCode !== undefined) {
+                            setCountry(parsed.countryCode);
+                            setEditCountry(parsed.countryCode);
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse local profile info:", e);
+                    }
+                } else {
+                    if (statsData?.countryCode) {
+                        setCountry(statsData.countryCode);
+                        setEditCountry(statsData.countryCode);
+                    }
+                }
             }
         } catch (error) {
             console.error("Failed to load profile", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSaveProfile = () => {
+        if (!user?.userId) return;
+        
+        setBio(editBio);
+        setProfileAvatar(editAvatar);
+        setCountry(editCountry);
+        
+        localStorage.setItem(`chess-profile-${user.userId}`, JSON.stringify({
+            bio: editBio,
+            avatar: editAvatar,
+            countryCode: editCountry
+        }));
+        localStorage.setItem(`chess-avatar-${user.userId}`, editAvatar);
+        
+        // Dispatch event to sync sidebar avatar
+        window.dispatchEvent(new Event('profile-update'));
+        setIsEditingProfile(false);
     };
 
     const handleReplay = (game) => {
@@ -123,14 +208,17 @@ export default function Profile() {
                             {/* Profile Picture */}
                             <div style={{ position: 'relative' }}>
                                 <div style={{ width: '90px', height: '90px', borderRadius: '6px', background: '#312e2b', border: '1px solid #403d39', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2.5rem', fontWeight: 'bold', color: '#babfc3', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
-                                    ♟️
+                                    {profileAvatar}
                                 </div>
                             </div>
 
                             {/* Player info details */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '800', color: 'white', fontFamily: '"Outfit", sans-serif' }}>
+                                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '800', color: 'white', fontFamily: '"Outfit", sans-serif', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     {user?.username}
+                                    <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }} title={countryNames[country] || 'Quốc gia'}>
+                                        {countryFlags[country] || '🌐'}
+                                    </span>
                                 </h1>
                                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', fontSize: '0.85rem', color: '#babfc3', fontWeight: 'bold', flexWrap: 'wrap' }}>
                                     <span>Hệ số ELO: <strong style={{ color: '#81b64c' }}>{stats?.rating || 1200}</strong></span>
@@ -583,6 +671,119 @@ export default function Profile() {
 
                                 </div>
                             </div>
+
+                            {/* Bio & Edit Profile Card */}
+                            <div style={{ background: '#262421', border: '1px solid #312e2b', borderRadius: '6px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1rem', color: 'white', fontWeight: '800', fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Tiểu sử & Cá nhân
+                                    </h3>
+                                    {!isEditingProfile && (
+                                        <button 
+                                            onClick={() => {
+                                                setEditBio(bio);
+                                                setEditAvatar(profileAvatar);
+                                                setEditCountry(country);
+                                                setIsEditingProfile(true);
+                                            }}
+                                            style={{ background: 'transparent', border: 'none', color: '#81b64c', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                        >
+                                            ✏️ Sửa
+                                        </button>
+                                    )}
+                                </div>
+
+                                {!isEditingProfile ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                            <span style={{ color: '#babfc3', fontWeight: 'bold', minWidth: '80px' }}>Linh vật:</span>
+                                            <span style={{ fontSize: '1.5rem' }}>{profileAvatar}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                            <span style={{ color: '#babfc3', fontWeight: 'bold', minWidth: '80px' }}>Quốc gia:</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {countryFlags[country] || '🌐'} {countryNames[country] || 'Chưa rõ'}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <span style={{ color: '#babfc3', fontWeight: 'bold' }}>Mô tả bản thân:</span>
+                                            <p style={{ margin: 0, color: '#f0f2f5', fontStyle: bio ? 'normal' : 'italic', background: 'rgba(0,0,0,0.15)', padding: '12px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.02)', whiteSpace: 'pre-wrap', minHeight: '40px', lineHeight: '1.4' }}>
+                                                {bio || 'Chưa có mô tả tiểu sử. Hãy nhấn Chỉnh sửa để viết gì đó về bạn!'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <label style={{ color: '#babfc3', fontWeight: 'bold' }}>Chọn linh vật đại diện:</label>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', background: 'rgba(0,0,0,0.15)', padding: '8px', borderRadius: '6px' }}>
+                                                {['♟️', '♞', '♝', '♜', '♛', '♚', '🦁', '🦊', '🦅', '🐉'].map(av => (
+                                                    <button 
+                                                        key={av}
+                                                        onClick={() => setEditAvatar(av)}
+                                                        style={{
+                                                            background: editAvatar === av ? '#81b64c' : '#312e2b',
+                                                            border: editAvatar === av ? '1px solid #81b64c' : '1px solid #403d39',
+                                                            borderRadius: '4px',
+                                                            fontSize: '1.4rem',
+                                                            padding: '6px 0',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s',
+                                                            display: 'flex',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        {av}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <label style={{ color: '#babfc3', fontWeight: 'bold' }}>Quốc gia:</label>
+                                            <select 
+                                                value={editCountry}
+                                                onChange={e => setEditCountry(e.target.value)}
+                                                style={{ background: '#312e2b', border: '1px solid #403d39', padding: '10px', borderRadius: '4px', color: 'white', cursor: 'pointer', width: '100%', boxSizing: 'border-box' }}
+                                            >
+                                                {Object.entries(countryFlags).map(([code, flag]) => (
+                                                    <option key={code} value={code} style={{ background: '#262421' }}>
+                                                        {flag} {countryNames[code]}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <label style={{ color: '#babfc3', fontWeight: 'bold' }}>Mô tả tiểu sử (tối đa 200 ký tự):</label>
+                                            <textarea 
+                                                value={editBio}
+                                                onChange={e => setEditBio(e.target.value.slice(0, 200))}
+                                                placeholder="Hãy chia sẻ gì đó về bạn..."
+                                                rows={3}
+                                                style={{ background: '#312e2b', border: '1px solid #403d39', padding: '10px', borderRadius: '4px', color: 'white', resize: 'vertical', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', lineHeight: '1.4' }}
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                                            <button 
+                                                onClick={handleSaveProfile}
+                                                style={{ flex: 1, background: '#81b64c', border: 'none', padding: '10px', borderRadius: '4px', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
+                                            >
+                                                Lưu
+                                            </button>
+                                            <button 
+                                                onClick={() => setIsEditingProfile(false)}
+                                                style={{ flex: 1, background: '#403d39', border: 'none', padding: '10px', borderRadius: '4px', color: '#babfc3', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
+                                            >
+                                                Hủy
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
 
                     </div>

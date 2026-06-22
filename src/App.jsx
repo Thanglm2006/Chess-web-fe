@@ -16,6 +16,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Replay from './pages/Replay';
 import ReplayPage from './pages/ReplayPage';
 import { AuthService } from './services/AuthService';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useEffect, useState } from "react";
 import './index.css';
 
@@ -56,121 +57,123 @@ const GlobalSocket = ({ children }) => {
 function App() {
     const token = localStorage.getItem('accessToken');
     return (
-        <Router>
-            <GlobalSocket>
-                <Routes>
-                    <Route path="/" element={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route
-                        path="/menu"
-                        element={
-                            <PrivateRoute>
-                                <MainMenu />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/play-ai"
-                        element={
-                            <PrivateRoute>
-                                <AIPlay />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/play-online"
-                        element={
-                            <PrivateRoute>
-                                <OnlinePlay />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/profile"
-                        element={
-                            <PrivateRoute>
-                                <Profile />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/replay"
-                        element={
-                            <PrivateRoute>
-                                <ReplayPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/friends"
-                        element={
-                            <PrivateRoute>
-                                <Friends />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/leaderboard"
-                        element={
-                            <PrivateRoute>
-                                <Leaderboard />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/tournaments"
-                        element={
-                            <PrivateRoute>
-                                <Tournaments />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/tournaments/detail/:tournamentId"
-                        element={
-                            <PrivateRoute>
-                                <TournamentDetail />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/tournaments/lobby/:tournamentId"
-                        element={
-                            <PrivateRoute>
-                                <TournamentLobby />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/tournaments/break/:tournamentId"
-                        element={
-                            <PrivateRoute>
-                                <TournamentBreak />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/admin"
-                        element={
-                            <PrivateRoute>
-                                <AdminDashboard />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/replay/:gameId"
-                        element={
-                            <PrivateRoute>
-                                <Replay />
-                            </PrivateRoute>
-                        }
-                    />
-                    {/* Fallback */}
-                    <Route path="*" element={<Navigate to="/login" />} />
-                </Routes>
-            </GlobalSocket>
-        </Router>
+        <ThemeProvider>
+            <Router>
+                <GlobalSocket>
+                    <Routes>
+                        <Route path="/" element={token ? <Navigate to="/menu" /> : <Navigate to="/login" />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route
+                            path="/menu"
+                            element={
+                                <PrivateRoute>
+                                    <MainMenu />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/play-ai"
+                            element={
+                                <PrivateRoute>
+                                    <AIPlay />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/play-online"
+                            element={
+                                <PrivateRoute>
+                                    <OnlinePlay />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/profile"
+                            element={
+                                <PrivateRoute>
+                                    <Profile />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/replay"
+                            element={
+                                <PrivateRoute>
+                                    <ReplayPage />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/friends"
+                            element={
+                                <PrivateRoute>
+                                    <Friends />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/leaderboard"
+                            element={
+                                <PrivateRoute>
+                                    <Leaderboard />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/tournaments"
+                            element={
+                                <PrivateRoute>
+                                    <Tournaments />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/tournaments/detail/:tournamentId"
+                            element={
+                                <PrivateRoute>
+                                    <TournamentDetail />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/tournaments/lobby/:tournamentId"
+                            element={
+                                <PrivateRoute>
+                                    <TournamentLobby />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/tournaments/break/:tournamentId"
+                            element={
+                                <PrivateRoute>
+                                    <TournamentBreak />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin"
+                            element={
+                                <PrivateRoute>
+                                    <AdminDashboard />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/replay/:gameId"
+                            element={
+                                <PrivateRoute>
+                                    <Replay />
+                                </PrivateRoute>
+                            }
+                        />
+                        {/* Fallback */}
+                        <Route path="*" element={<Navigate to="/login" />} />
+                    </Routes>
+                </GlobalSocket>
+            </Router>
+        </ThemeProvider>
     );
 }
 

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { UserService } from '../services/UserService';
 import { socketClient } from '../services/SocketService';
+import ThemeCustomizer from './ThemeCustomizer';
 import friendsIcon from '../assets/friends.svg';
 
 export default function Sidebar({ username }) {
@@ -10,6 +11,7 @@ export default function Sidebar({ username }) {
     const location = useLocation();
     const [userRating, setUserRating] = useState(localStorage.getItem('rating') ? Number(localStorage.getItem('rating')) : null);
     const [displayUsername, setDisplayUsername] = useState(username || localStorage.getItem('username') || 'Khách');
+    const [sidebarAvatar, setSidebarAvatar] = useState('👤');
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
@@ -57,6 +59,23 @@ export default function Sidebar({ username }) {
             }
         };
         fetchUserStats();
+    }, [payload?.userId]);
+
+    useEffect(() => {
+        const loadAvatar = () => {
+            if (payload?.userId) {
+                const saved = localStorage.getItem(`chess-avatar-${payload.userId}`);
+                if (saved) {
+                    setSidebarAvatar(saved);
+                } else {
+                    setSidebarAvatar('👤');
+                }
+            }
+        };
+        
+        loadAvatar();
+        window.addEventListener('profile-update', loadAvatar);
+        return () => window.removeEventListener('profile-update', loadAvatar);
     }, [payload?.userId]);
 
     return (
@@ -111,8 +130,8 @@ export default function Sidebar({ username }) {
                     <input type="text" placeholder="Tìm kiếm" />
                 </div>
                 <div className="user-profile">
-                    <div className="avatar">
-                        <span className="icon">👤</span>
+                    <div className="avatar" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.25rem' }}>
+                        {sidebarAvatar}
                     </div>
                     <div className="user-details" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, marginLeft: '10px' }}>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '600', fontSize: '0.85rem', color: 'var(--text-primary)' }}>{displayUsername}</span>
@@ -120,8 +139,11 @@ export default function Sidebar({ username }) {
                             <span className="user-rating" style={{ fontSize: '0.75rem', color: '#81b64c', fontWeight: 'bold', marginTop: '2px' }}>⭐ {userRating} ELO</span>
                         )}
                     </div>
-                    <button className="settings-btn" onClick={handleLogout}>⚙️</button>
                 </div>
+                <ThemeCustomizer />
+                <button className="logout-btn" onClick={handleLogout}>
+                    <span className="icon">🚪</span> Đăng xuất
+                </button>
             </div>
         </div>
     );

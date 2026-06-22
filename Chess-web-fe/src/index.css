@@ -510,11 +510,15 @@ button {
 }
 
 .theme-presets-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-}
+    display: flex;
+    gap: 8px;
 
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+}
 .preset-dot {
     position: relative;
     display: flex;
